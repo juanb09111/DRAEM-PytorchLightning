@@ -54,4 +54,4 @@ EXP_NAME=$1
 
 # Finally run your job. Here's an example of a python script.
 
-python -u train.py --model_name=deeplab --config=configs/anomaly_large.yml --predict --nodes=1  --ip_adress $ip1 --exp_name $1
+python -u train.py   --ip_adress $ip1 --exp_name $1
