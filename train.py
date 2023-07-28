@@ -12,6 +12,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--obj_id', action='store', type=int, required=True)
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
+    parser.add_argument('--predict', action='store_true')
+    parser.add_argument('--eval', action='store_true')
     parser.add_argument('--visualize', action='store_true')
 
     args = parser.parse_args()
@@ -56,7 +58,7 @@ if __name__ == "__main__":
     
     args.obj_names = picked_classes
     # add the ip address to the environment variable so it can be easily avialbale
-    os.environ['MASTER_ADDR'] = args.ip_adress
-    print("ip_adress is", args.ip_adress)
+    # os.environ['MASTER_ADDR'] = args.ip_adress
+    # print("ip_adress is", args.ip_adress)
     os.environ['MASTER_PORT'] = '12355'
     train.train(args)

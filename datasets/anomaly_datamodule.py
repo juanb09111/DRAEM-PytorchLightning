@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pathlib import Path
 from torch.utils.data import Dataset
 import torch
 import cv2
@@ -8,13 +9,19 @@ import imgaug.augmenters as iaa
 from perlin import rand_perlin_2d_np
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import matplotlib.pyplot as plt
 
 class MVTecDRAEMTestDataset(Dataset):
 
-    def __init__(self, root_dir, resize_shape=None):
+    def __init__(self, cfg, root_dir, transforms, resize_shape=None):
         self.root_dir = root_dir
         self.images = sorted(glob.glob(root_dir+"/*/*.png"))
         self.resize_shape=resize_shape
+        self.transforms = transforms
+        self.cfg = cfg
 
     def __len__(self):
         return len(self.images)
@@ -35,8 +42,8 @@ class MVTecDRAEMTestDataset(Dataset):
         image = np.array(image).reshape((image.shape[0], image.shape[1], 3)).astype(np.float32)
         mask = np.array(mask).reshape((mask.shape[0], mask.shape[1], 1)).astype(np.float32)
 
-        image = np.transpose(image, (2, 0, 1))
-        mask = np.transpose(mask, (2, 0, 1))
+        # image = np.transpose(image, (2, 0, 1))
+        # mask = np.transpose(mask, (2, 0, 1))
         return image, mask
 
     def __getitem__(self, idx):
@@ -57,7 +64,24 @@ class MVTecDRAEMTestDataset(Dataset):
             image, mask = self.transform_image(img_path, mask_path)
             has_anomaly = np.array([1], dtype=np.float32)
 
-        sample = {'image': image, 'has_anomaly': has_anomaly,'mask': mask, 'idx': idx}
+
+        apply_transforms = self.transforms(self.cfg)
+        
+        transformed = apply_transforms(
+            image=image,
+            masks=[mask]
+        )
+
+        basename = self.images[idx].split("/")[-1].split(".")[0]
+        loc = "/".join(self.images[idx].split("/")[1:-1])
+
+        sample = {'image': transformed["image"],
+            'has_anomaly': torch.tensor(np.array([has_anomaly])),
+            'mask': transformed["masks"][0], 
+            'idx': torch.tensor(np.array([idx])),
+            'basename': basename,
+            "loc": loc
+        }
 
         return sample
 
@@ -65,7 +89,7 @@ class MVTecDRAEMTestDataset(Dataset):
 
 class MVTecDRAEMTrainDataset(Dataset):
 
-    def __init__(self, root_dir, anomaly_source_path, resize_shape=None):
+    def __init__(self, cfg, root_dir, anomaly_source_path, transforms, resize_shape=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -74,7 +98,6 @@ class MVTecDRAEMTrainDataset(Dataset):
         """
         self.root_dir = root_dir
         self.resize_shape=resize_shape
-
         self.image_paths = sorted(glob.glob(root_dir+"/*.png"))
 
         self.anomaly_source_paths = sorted(glob.glob(anomaly_source_path+"/*/*.jpg"))
@@ -92,6 +115,9 @@ class MVTecDRAEMTrainDataset(Dataset):
                       ]
 
         self.rot = iaa.Sequential([iaa.Affine(rotate=(-90, 90))])
+
+        self.transforms = transforms
+        self.cfg = cfg
 
 
     def __len__(self):
@@ -153,20 +179,77 @@ class MVTecDRAEMTrainDataset(Dataset):
 
         image = np.array(image).reshape((image.shape[0], image.shape[1], image.shape[2])).astype(np.float32) / 255.0
         augmented_image, anomaly_mask, has_anomaly = self.augment_image(image, anomaly_source_path)
-        augmented_image = np.transpose(augmented_image, (2, 0, 1))
-        image = np.transpose(image, (2, 0, 1))
-        anomaly_mask = np.transpose(anomaly_mask, (2, 0, 1))
+        # augmented_image = np.transpose(augmented_image, (2, 0, 1))
+        # image = np.transpose(image, (2, 0, 1))
+        # anomaly_mask = np.transpose(anomaly_mask, (2, 0, 1))
         return image, augmented_image, anomaly_mask, has_anomaly
 
     def __getitem__(self, idx):
         idx = torch.randint(0, len(self.image_paths), (1,)).item()
         anomaly_source_idx = torch.randint(0, len(self.anomaly_source_paths), (1,)).item()
-        image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx],
-                                                                           self.anomaly_source_paths[anomaly_source_idx])
-        sample = {'image': image, "anomaly_mask": anomaly_mask,
-                  'augmented_image': augmented_image, 'has_anomaly': has_anomaly, 'idx': idx}
+        image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx], self.anomaly_source_paths[anomaly_source_idx])
+        
+        basename = self.image_paths[idx].split("/")[-1].split(".")[0]
+        loc = "/".join(self.image_paths[idx].split("/")[1:-1])
+
+        
+        apply_transforms = self.transforms(self.cfg)
+
+        transformed = apply_transforms(
+            image=image,
+            masks=[anomaly_mask]
+        )
+
+        transformed_augmented = apply_transforms(image=augmented_image)  
+
+        sample = {'image': transformed["image"],
+            "anomaly_mask": transformed["masks"][-1],
+            'augmented_image': transformed_augmented["image"], 
+            'has_anomaly': torch.tensor(np.array([has_anomaly])), 
+            'idx': torch.tensor(np.array([idx])),
+            "loc": loc,
+            "basename": basename
+        }
 
         return sample
+
+
+
+def get_train_transforms(cfg):
+
+    custom_transforms = []
+    custom_transforms.append(ToTensorV2())
+
+    return A.Compose(custom_transforms)
+
+
+def get_test_transforms(cfg):
+
+    custom_transforms = []
+    custom_transforms.append(ToTensorV2())
+
+    return A.Compose(custom_transforms)
+
+
+def test_dataset(cfg, dataset, item):
+
+    # print(item)
+    sample = dataset.__getitem__(item)
+    image = sample["image"]
+    augmented_image = sample["augmented_image"]
+    # print(sample["loc"], sample["basename"])
+    preview_loc = os.path.join("datasets/preview/", sample["loc"])
+    p = Path(preview_loc)
+    p.mkdir(parents=True, exist_ok=True)
+    save_image(image, os.path.join(preview_loc, sample["basename"]+".png"))
+    save_image(augmented_image, os.path.join(preview_loc, sample["basename"]+"_augmented.png"))
+
+    #Visualize Semantic
+    for sem in ["anomaly_mask"]:
+        im = sample[sem]
+        plt.imshow(im)
+        plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask.png"))
+    
 
 
 class AnomalyDataModule(LightningDataModule):
@@ -176,22 +259,31 @@ class AnomalyDataModule(LightningDataModule):
         cgf: config
     """
 
-    def __init__(self, cfg, obj_name):
+    def __init__(self, cfg, obj_name, test=True):
         super().__init__()
         self.cfg = cfg
         self.batch_size = cfg.BATCH_SIZE
         self.obj_name = obj_name
 
+        if test:
+            root_dir = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC, self.obj_name, "train/good/")
+            anomaly_source_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
+                self.cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE)
+            
+            resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
+            dataset_test = MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms, resize_shape)
+
+            for i in range(10):
+                test_dataset(cfg, dataset_test, i)
+
+
     def train_dataset(self) -> MVTecDRAEMTrainDataset:
-        root_dir = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
-            self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC,
-            self.obj_name, 
-            "/train/good/")
+        root_dir = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC, self.obj_name, "train/good/")
         anomaly_source_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
             self.cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE)
         
         resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
-        return MVTecDRAEMTrainDataset(root_dir, anomaly_source_path, resize_shape)
+        return MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms, resize_shape)
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
@@ -215,7 +307,7 @@ class AnomalyDataModule(LightningDataModule):
             self.obj_name, 
             "/test/")
         resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
-        return MVTecDRAEMTestDataset(mvtec_path, resize_shape)
+        return MVTecDRAEMTestDataset(self.cfg, mvtec_path, get_test_transforms, resize_shape)
 
     def predict_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()

@@ -36,8 +36,9 @@ def train(args):
     _CURRENT_STORAGE_STACK.append(EventStorage())
 
     for obj_name in args.obj_names:
+        print(obj_name)
         datamodule = AnomalyDataModule(cfg, obj_name)
-   
+        datamodule.train_dataloader()
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         

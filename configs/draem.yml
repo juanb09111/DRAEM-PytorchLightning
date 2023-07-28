@@ -39,6 +39,6 @@ ANOMALY_DATASET:
   HFLIP: 0.5
   DATASET_PATH:
     ROOT: "datasets"
-    ANOMALY_SOURCE: "dtd"
+    ANOMALY_SOURCE: "dtd/images"
     MVTEC: "mvtec"
     
