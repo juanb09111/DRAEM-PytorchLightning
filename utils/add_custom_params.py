@@ -39,7 +39,7 @@ def add_custom_params(cfg):
 
   
     cfg.ANOMALY_DATASET.DATASET_PATH = CfgNode()
-    cfg.ANOMALY_DATASET.DATASET_PATH.ROOT = "datasets/vkitti2"
+    cfg.ANOMALY_DATASET.DATASET_PATH.ROOT = "datasets"
     cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE = ""
     cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC = ""
     # Solver

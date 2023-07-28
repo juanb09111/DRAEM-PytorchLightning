@@ -8,6 +8,7 @@ SOLVER:
   # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
   FAST_DEV_RUN: 2
   BASE_LR: 0.0012882495516931339
+  
 
 
 CHECKPOINT_PATH_TRAINING: ""

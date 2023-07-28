@@ -11,14 +11,6 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument('--obj_id', action='store', type=int, required=True)
-    parser.add_argument('--bs', action='store', type=int, required=True)
-    parser.add_argument('--lr', action='store', type=float, required=True)
-    parser.add_argument('--epochs', action='store', type=int, required=True)
-    parser.add_argument('--gpu_id', action='store', type=int, default=0, required=False)
-    parser.add_argument('--data_path', action='store', type=str, required=True)
-    parser.add_argument('--anomaly_source_path', action='store', type=str, required=True)
-    parser.add_argument('--checkpoint_path', action='store', type=str, required=True)
-    parser.add_argument('--log_path', action='store', type=str, required=True)
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
     parser.add_argument('--visualize', action='store_true')
 
