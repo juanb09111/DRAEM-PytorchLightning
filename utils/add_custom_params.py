@@ -1,0 +1,54 @@
+from detectron2.config import CfgNode
+
+def add_custom_params(cfg):
+    """
+    In order to add custom config parameter in the .yaml those parameter must
+    be initialised
+    """
+    # Model
+    cfg.MODEL_CUSTOM = CfgNode()
+    cfg.MODEL_CUSTOM.BACKBONE = CfgNode()
+    cfg.MAX_EPOCHS= 700
+    #Dataset
+    cfg.ANOMALY_DATASET = CfgNode()
+    cfg.ANOMALY_DATASET.MAX_SAMPLES = 100
+    cfg.ANOMALY_DATASET.SHUFFLE = True
+
+    cfg.ANOMALY_DATASET.HFLIP = 0.5
+
+    cfg.ANOMALY_DATASET.RANDOMCROP = CfgNode()
+    cfg.ANOMALY_DATASET.RANDOMCROP.HEIGHT = 512
+    cfg.ANOMALY_DATASET.RANDOMCROP.WIDTH = 1024
+
+    cfg.ANOMALY_DATASET.RESIZE = CfgNode()
+    cfg.ANOMALY_DATASET.RESIZE.HEIGHT = 512
+    cfg.ANOMALY_DATASET.RESIZE.WIDTH = 1024
+    
+    cfg.ANOMALY_DATASET.ORIGINAL_SIZE = CfgNode()
+    cfg.ANOMALY_DATASET.ORIGINAL_SIZE.HEIGHT = 375
+    cfg.ANOMALY_DATASET.ORIGINAL_SIZE.WIDTH = 1242
+
+    cfg.ANOMALY_DATASET.CENTER_CROP = CfgNode()
+    cfg.ANOMALY_DATASET.CENTER_CROP.HEIGHT = 200
+    cfg.ANOMALY_DATASET.CENTER_CROP.WIDTH = 1000
+
+    cfg.ANOMALY_DATASET.MAX_SIZE = 1500
+    cfg.ANOMALY_DATASET.NORMALIZE = CfgNode()
+    cfg.ANOMALY_DATASET.NORMALIZE.MEAN = (0.485, 0.456, 0.406)
+    cfg.ANOMALY_DATASET.NORMALIZE.STD = (0.229, 0.224, 0.225)
+
+  
+    cfg.ANOMALY_DATASET.DATASET_PATH = CfgNode()
+    cfg.ANOMALY_DATASET.DATASET_PATH.ROOT = "datasets/vkitti2"
+    cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE = ""
+    cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC = ""
+    # Solver
+    cfg.SOLVER.NAME = "SGD"
+    cfg.SOLVER.ACCUMULATE_GRAD = 1
+    cfg.SOLVER.FAST_DEV_RUN = None
+    cfg.SOLVER.BASE_LR = 0.0013182567385564075
+    # Runner
+    cfg.BATCH_SIZE = 2
+    cfg.CHECKPOINT_PATH_TRAINING = ""
+    cfg.CHECKPOINT_PATH_INFERENCE = ""
+    cfg.PRECISION = 32
