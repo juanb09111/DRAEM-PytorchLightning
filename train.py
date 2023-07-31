@@ -10,11 +10,14 @@ from train_scripts import train
 if __name__ == "__main__":
 
     parser = ArgumentParser()
+    parser.add_argument('--exp_name', type=str, required=True, help="Name of the experiment")
     parser.add_argument('--obj_id', action='store', type=int, required=True)
     parser.add_argument('--config', type=str, required=True, help="Config file from configs/")
     parser.add_argument('--predict', action='store_true')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--visualize', action='store_true')
+    parser.add_argument('--tune', action='store_true')
+    parser.add_argument('--fast_dev', action='store_true')
 
     args = parser.parse_args()
 

@@ -6,7 +6,7 @@ import torch
 import cv2
 import glob
 import imgaug.augmenters as iaa
-from perlin import rand_perlin_2d_np
+from .perlin import rand_perlin_2d_np
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image

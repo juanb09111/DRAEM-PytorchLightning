@@ -1,13 +1,15 @@
 # VERSION: 2
 
-BATCH_SIZE: 2
+BATCH_SIZE: 4
 
 SOLVER:
   NAME: "Adam" # Adam or SGD
   WARMUP_ITERS: 100 # Set to 0 for no warmup
   # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
   FAST_DEV_RUN: 2
-  BASE_LR: 0.0012882495516931339
+  BASE_LR: 0.0001
+  N_EPOCHS: 700
+  INIT_WEIGHTS: True
   
 
 

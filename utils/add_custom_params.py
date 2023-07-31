@@ -47,8 +47,13 @@ def add_custom_params(cfg):
     cfg.SOLVER.ACCUMULATE_GRAD = 1
     cfg.SOLVER.FAST_DEV_RUN = None
     cfg.SOLVER.BASE_LR = 0.0013182567385564075
+    cfg.SOLVER.N_EPOCHS = 700
+    cfg.SOLVER.INIT_WEIGHTS = True
     # Runner
     cfg.BATCH_SIZE = 2
     cfg.CHECKPOINT_PATH_TRAINING = ""
     cfg.CHECKPOINT_PATH_INFERENCE = ""
     cfg.PRECISION = 32
+    # Callbacks
+    cfg.CALLBACKS = CfgNode()
+    cfg.CALLBACKS.CHECKPOINT_DIR = None
