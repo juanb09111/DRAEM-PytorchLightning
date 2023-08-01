@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from torch.utils.data import Dataset
 import torch
+from torch.nn import functional as F
 import cv2
 import glob
 import imgaug.augmenters as iaa
@@ -16,25 +17,24 @@ import matplotlib.pyplot as plt
 
 class MVTecDRAEMTestDataset(Dataset):
 
-    def __init__(self, cfg, root_dir, transforms, resize_shape=None):
+    def __init__(self, cfg, root_dir, transforms):
         self.root_dir = root_dir
         self.images = sorted(glob.glob(root_dir+"/*/*.png"))
-        self.resize_shape=resize_shape
         self.transforms = transforms
         self.cfg = cfg
 
     def __len__(self):
         return len(self.images)
 
-    def transform_image(self, image_path, mask_path):
+    def transform_image(self, image_path, mask_path, resize_shape):
         image = cv2.imread(image_path, cv2.IMREAD_COLOR)
         if mask_path is not None:
             mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         else:
             mask = np.zeros((image.shape[0],image.shape[1]))
-        if self.resize_shape != None:
-            image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
-            mask = cv2.resize(mask, dsize=(self.resize_shape[1], self.resize_shape[0]))
+        if resize_shape != None:
+            image = cv2.resize(image, dsize=(resize_shape[1], resize_shape[0]))
+            mask = cv2.resize(mask, dsize=(resize_shape[1], resize_shape[0]))
 
         image = image / 255.0
         mask = mask / 255.0
@@ -45,23 +45,41 @@ class MVTecDRAEMTestDataset(Dataset):
         # image = np.transpose(image, (2, 0, 1))
         # mask = np.transpose(mask, (2, 0, 1))
         return image, mask
+    
+    def find_new_size(self, image_path):
+        image = cv2.imread(image_path)
+        max_size = self.cfg.ANOMALY_DATASET.MAX_SIZE
+        f1 = max_size / image.shape[1]
+        f2 = max_size / image.shape[0]
+        min_val = min(f1,f2)
+        if min_val < 1:
+            resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
+        else:
+            resize_shape = (image.shape[0], image.shape[1])
+        
+        #round
+        n=64
+        resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
+        return resize_shape
+
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
         img_path = self.images[idx]
+        resize_shape = self.find_new_size(img_path)
         dir_path, file_name = os.path.split(img_path)
         base_dir = os.path.basename(dir_path)
         if base_dir == 'good':
-            image, mask = self.transform_image(img_path, None)
+            image, mask = self.transform_image(img_path, None, self.resize_shape)
             has_anomaly = np.array([0], dtype=np.float32)
         else:
             mask_path = os.path.join(dir_path, '../../ground_truth/')
             mask_path = os.path.join(mask_path, base_dir)
             mask_file_name = file_name.split(".")[0]+"_mask.png"
             mask_path = os.path.join(mask_path, mask_file_name)
-            image, mask = self.transform_image(img_path, mask_path)
+            image, mask = self.transform_image(img_path, mask_path, self.resize_shape)
             has_anomaly = np.array([1], dtype=np.float32)
 
 
@@ -89,7 +107,7 @@ class MVTecDRAEMTestDataset(Dataset):
 
 class MVTecDRAEMTrainDataset(Dataset):
 
-    def __init__(self, cfg, root_dir, anomaly_source_path, transforms, resize_shape=None):
+    def __init__(self, cfg, root_dir, anomaly_source_path, transforms):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -97,7 +115,6 @@ class MVTecDRAEMTrainDataset(Dataset):
                 on a sample.
         """
         self.root_dir = root_dir
-        self.resize_shape=resize_shape
         self.image_paths = sorted(glob.glob(root_dir+"/*.png"))
 
         self.anomaly_source_paths = sorted(glob.glob(anomaly_source_path+"/*/*.jpg"))
@@ -114,11 +131,10 @@ class MVTecDRAEMTrainDataset(Dataset):
                       iaa.Affine(rotate=(-45, 45))
                       ]
 
-        self.rot = iaa.Sequential([iaa.Affine(rotate=(-90, 90))])
+        self.rot = iaa.Sequential([iaa.Affine(rotate=(-45, 45))])
 
         self.transforms = transforms
         self.cfg = cfg
-
 
     def __len__(self):
         return len(self.image_paths)
@@ -132,18 +148,17 @@ class MVTecDRAEMTrainDataset(Dataset):
                              )
         return aug
 
-    def augment_image(self, image, anomaly_source_path):
+    def augment_image(self, image, anomaly_source_path, resize_shape):
         aug = self.randAugmenter()
         perlin_scale = 6
         min_perlin_scale = 0
         anomaly_source_img = cv2.imread(anomaly_source_path)
-        anomaly_source_img = cv2.resize(anomaly_source_img, dsize=(self.resize_shape[1], self.resize_shape[0]))
-
+        anomaly_source_img = cv2.resize(anomaly_source_img, dsize=(resize_shape[1], resize_shape[0]))
         anomaly_img_augmented = aug(image=anomaly_source_img)
         perlin_scalex = 2 ** (torch.randint(min_perlin_scale, perlin_scale, (1,)).numpy()[0])
         perlin_scaley = 2 ** (torch.randint(min_perlin_scale, perlin_scale, (1,)).numpy()[0])
+        perlin_noise = rand_perlin_2d_np((resize_shape[0], resize_shape[1]), (perlin_scalex, perlin_scaley))
 
-        perlin_noise = rand_perlin_2d_np((self.resize_shape[0], self.resize_shape[1]), (perlin_scalex, perlin_scaley))
         perlin_noise = self.rot(image=perlin_noise)
         threshold = 0.5
         perlin_thr = np.where(perlin_noise > threshold, np.ones_like(perlin_noise), np.zeros_like(perlin_noise))
@@ -169,26 +184,46 @@ class MVTecDRAEMTrainDataset(Dataset):
                 has_anomaly=0.0
             return augmented_image, msk, np.array([has_anomaly],dtype=np.float32)
 
-    def transform_image(self, image_path, anomaly_source_path):
+    def transform_image(self, image_path, anomaly_source_path, resize_shape):
         image = cv2.imread(image_path)
-        image = cv2.resize(image, dsize=(self.resize_shape[1], self.resize_shape[0]))
+        # print("image_shape", image.shape, resize_shape)
+
+        image = cv2.resize(image, dsize=(resize_shape[1], resize_shape[0]))
 
         do_aug_orig = torch.rand(1).numpy()[0] > 0.7
         if do_aug_orig:
             image = self.rot(image=image)
 
         image = np.array(image).reshape((image.shape[0], image.shape[1], image.shape[2])).astype(np.float32) / 255.0
-        augmented_image, anomaly_mask, has_anomaly = self.augment_image(image, anomaly_source_path)
+        augmented_image, anomaly_mask, has_anomaly = self.augment_image(image, anomaly_source_path, resize_shape)
         # augmented_image = np.transpose(augmented_image, (2, 0, 1))
         # image = np.transpose(image, (2, 0, 1))
         # anomaly_mask = np.transpose(anomaly_mask, (2, 0, 1))
         return image, augmented_image, anomaly_mask, has_anomaly
+    
+    def find_new_size(self, image_path):
+        image = cv2.imread(image_path)
+        max_size = self.cfg.ANOMALY_DATASET.MAX_SIZE
+        f1 = max_size / image.shape[1]
+        f2 = max_size / image.shape[0]
+        min_val = min(f1,f2)
+        if min_val < 1:
+            resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
+        else:
+            resize_shape = (image.shape[0], image.shape[1])
+        
+        #round
+        n=64
+        resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
+        return resize_shape
 
     def __getitem__(self, idx):
         idx = torch.randint(0, len(self.image_paths), (1,)).item()
+        resize_shape = self.find_new_size(self.image_paths[idx])
         anomaly_source_idx = torch.randint(0, len(self.anomaly_source_paths), (1,)).item()
-        image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx], self.anomaly_source_paths[anomaly_source_idx])
+        image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx], self.anomaly_source_paths[anomaly_source_idx], resize_shape)
         
+
         basename = self.image_paths[idx].split("/")[-1].split(".")[0]
         loc = "/".join(self.image_paths[idx].split("/")[1:-1])
 
@@ -200,10 +235,10 @@ class MVTecDRAEMTrainDataset(Dataset):
             masks=[anomaly_mask]
         )
 
-        transformed_augmented = apply_transforms(image=augmented_image)  
-
+        transformed_augmented = apply_transforms(image=augmented_image) 
+        
         sample = {'image': transformed["image"],
-            "anomaly_mask": transformed["masks"][-1],
+            "anomaly_mask": torch.permute(transformed["masks"][-1], (2,0,1)),
             'augmented_image': transformed_augmented["image"], 
             'has_anomaly': torch.tensor(np.array([has_anomaly])), 
             'idx': torch.tensor(np.array([idx])),
@@ -244,9 +279,9 @@ def test_dataset(cfg, dataset, item):
     save_image(image, os.path.join(preview_loc, sample["basename"]+".png"))
     save_image(augmented_image, os.path.join(preview_loc, sample["basename"]+"_augmented.png"))
 
-    #Visualize Semantic
+    # Visualize Semantic
     for sem in ["anomaly_mask"]:
-        im = sample[sem]
+        im = torch.squeeze(sample[sem])
         plt.imshow(im)
         plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask.png"))
     
@@ -270,8 +305,7 @@ class AnomalyDataModule(LightningDataModule):
             anomaly_source_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
                 self.cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE)
             
-            resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
-            dataset_test = MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms, resize_shape)
+            dataset_test = MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms)
 
             for i in range(10):
                 test_dataset(cfg, dataset_test, i)
@@ -282,8 +316,7 @@ class AnomalyDataModule(LightningDataModule):
         anomaly_source_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
             self.cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE)
         
-        resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
-        return MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms, resize_shape)
+        return MVTecDRAEMTrainDataset(self.cfg, root_dir, anomaly_source_path, get_train_transforms)
 
     def train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset()
@@ -306,8 +339,7 @@ class AnomalyDataModule(LightningDataModule):
             self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC,
             self.obj_name, 
             "/test/")
-        resize_shape = (self.cfg.ANOMALY_DATASET.RESIZE.HEIGHT, self.cfg.ANOMALY_DATASET.RESIZE.WIDTH)
-        return MVTecDRAEMTestDataset(self.cfg, mvtec_path, get_test_transforms, resize_shape)
+        return MVTecDRAEMTestDataset(self.cfg, mvtec_path, get_test_transforms)
 
     def predict_dataloader(self) -> DataLoader:
         val_dataset = self.val_dataset()
@@ -327,13 +359,28 @@ class AnomalyDataModule(LightningDataModule):
     # @staticmethod
     def collate_fn_wrapper(self):
         def collate_fn(batch):
+            max_width = 0
+            max_height = 0
+            for sample in batch:
+                sample_image_shape = sample["image"].shape
+                max_height = max_height if max_height > sample_image_shape[-2] else sample_image_shape[-2]
+                max_width = max_width if max_width > sample_image_shape[-1] else sample_image_shape[-1]
             
+            for idx, i in enumerate(batch):
+                batch[idx]["original_size"] = torch.tensor([batch[idx]["image"].shape])
+                padding_right = max_width - batch[idx]["image"].shape[-1]
+                padding_bottom = max_height - batch[idx]["image"].shape[-2]
+                p2d = (0, padding_right, 0, padding_bottom)
+                batch[idx]["image"] =  F.pad(batch[idx]["image"], p2d, "constant", 0)
+                batch[idx]["anomaly_mask"] =  F.pad(batch[idx]["anomaly_mask"], p2d, "constant", 0)
+                batch[idx]["augmented_image"] =  F.pad(batch[idx]["augmented_image"], p2d, "constant", 0)
             return {
                 'image': torch.stack([i['image'] for i in batch]),
                 'anomaly_mask': torch.stack([i['anomaly_mask'] for i in batch]),
                 'augmented_image': torch.stack([i['augmented_image'] for i in batch]),
                 'has_anomaly': [i['has_anomaly'] for i in batch],
-                'idx': torch.stack([i['idx'] for i in batch])
+                'idx': torch.stack([i['idx'] for i in batch]),
+                'original_size': torch.stack([i['original_size'] for i in batch ]) if 'original_size' in i.keys() else torch.stack([torch.tensor(0) for _ in batch ])
             }
         return collate_fn
 

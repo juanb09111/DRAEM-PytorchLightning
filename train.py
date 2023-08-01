@@ -21,39 +21,42 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    obj_batch = [['capsule'],
-                 ['bottle'],
-                 ['carpet'],
-                 ['leather'],
-                 ['pill'],
-                 ['transistor'],
-                 ['tile'],
-                 ['cable'],
-                 ['zipper'],
-                 ['toothbrush'],
-                 ['metal_nut'],
-                 ['hazelnut'],
-                 ['screw'],
-                 ['grid'],
-                 ['wood']
-                 ]
+    obj_batch = [
+                ['tree'],
+                ['capsule'],
+                ['bottle'],
+                ['carpet'],
+                ['leather'],
+                ['pill'],
+                ['transistor'],
+                ['tile'],
+                ['cable'],
+                ['zipper'],
+                ['toothbrush'],
+                ['metal_nut'],
+                ['hazelnut'],
+                ['screw'],
+                ['grid'],
+                ['wood']
+                ]
 
     if int(args.obj_id) == -1:
-        obj_list = ['capsule',
-                     'bottle',
-                     'carpet',
-                     'leather',
-                     'pill',
-                     'transistor',
-                     'tile',
-                     'cable',
-                     'zipper',
-                     'toothbrush',
-                     'metal_nut',
-                     'hazelnut',
-                     'screw',
-                     'grid',
-                     'wood'
+        obj_list = ['tree',
+                    'capsule',
+                    'bottle',
+                    'carpet',
+                    'leather',
+                    'pill',
+                    'transistor',
+                    'tile',
+                    'cable',
+                    'zipper',
+                    'toothbrush',
+                    'metal_nut',
+                    'hazelnut',
+                    'screw',
+                    'grid',
+                    'wood'
                      ]
         picked_classes = obj_list
     else:

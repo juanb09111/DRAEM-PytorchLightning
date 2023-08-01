@@ -41,11 +41,11 @@ def train(args):
     logging.getLogger("pytorch_lightning").setLevel(logging.INFO)
     logger = logging.getLogger("pytorch_lightning.core")
     _CURRENT_STORAGE_STACK.append(EventStorage())
-
+    torch.cuda.empty_cache()
     for obj_name in args.obj_names:
-        print(obj_name)
-        datamodule = AnomalyDataModule(cfg, obj_name, test=False)
-        datamodule.train_dataloader()
+
+        datamodule = AnomalyDataModule(cfg, obj_name, test=True)
+        
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         checkpoint_path = checkpoint_path if checkpoint_path != None else ""
@@ -82,6 +82,7 @@ def train(args):
         # # Create a pytorch lighting trainer
         trainer = pl.Trainer(
             # weights_summary='full',
+            max_epochs=cfg.SOLVER.N_EPOCHS,
             logger=tb_logger,
             auto_lr_find=args.tune,
             log_every_n_steps=np.floor(len(datamodule.train_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,

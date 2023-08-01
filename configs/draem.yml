@@ -1,7 +1,6 @@
 # VERSION: 2
 
 BATCH_SIZE: 4
-
 SOLVER:
   NAME: "Adam" # Adam or SGD
   WARMUP_ITERS: 100 # Set to 0 for no warmup
@@ -17,28 +16,10 @@ CHECKPOINT_PATH_TRAINING: ""
 CHECKPOINT_PATH_INFERENCE: ""
 
 ANOMALY_DATASET:
+  PREVIEW_DATASET: False
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
-  NORMALIZE:
-    MEAN: (0.485, 0.456, 0.406)
-    STD: (0.229, 0.224, 0.225)
-  ORIGINAL_SIZE:
-    HEIGHT: 1080
-    WIDTH: 1920
-  RANDOMCROP:
-    HEIGHT: 1080
-    WIDTH: 1920
-  RESIZE:
-    # HEIGHT: 375
-    # WIDTH: 1242
-    HEIGHT: 256
-    WIDTH: 256
-  CENTER_CROP:
-    # HEIGHT: 360
-    # WIDTH: 1200
-    HEIGHT: 540
-    WIDTH: 960
-  HFLIP: 0.5
+  MAX_SIZE: 256
   DATASET_PATH:
     ROOT: "datasets"
     ANOMALY_SOURCE: "dtd/images"
