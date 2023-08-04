@@ -131,7 +131,7 @@ class MVTecDRAEMTrainDataset(Dataset):
                       iaa.Affine(rotate=(-45, 45))
                       ]
 
-        self.rot = iaa.Sequential([iaa.Affine(rotate=(-45, 45))])
+        self.rot = iaa.Sequential([iaa.Affine(rotate=(-15, 15))])
 
         self.transforms = transforms
         self.cfg = cfg
