@@ -72,14 +72,14 @@ class MVTecDRAEMTestDataset(Dataset):
         dir_path, file_name = os.path.split(img_path)
         base_dir = os.path.basename(dir_path)
         if base_dir == 'good':
-            image, mask = self.transform_image(img_path, None, self.resize_shape)
+            image, mask = self.transform_image(img_path, None, resize_shape)
             has_anomaly = np.array([0], dtype=np.float32)
         else:
             mask_path = os.path.join(dir_path, '../../ground_truth/')
             mask_path = os.path.join(mask_path, base_dir)
             mask_file_name = file_name.split(".")[0]+"_mask.png"
             mask_path = os.path.join(mask_path, mask_file_name)
-            image, mask = self.transform_image(img_path, mask_path, self.resize_shape)
+            image, mask = self.transform_image(img_path, mask_path, resize_shape)
             has_anomaly = np.array([1], dtype=np.float32)
 
 
@@ -95,7 +95,7 @@ class MVTecDRAEMTestDataset(Dataset):
 
         sample = {'image': transformed["image"],
             'has_anomaly': torch.tensor(np.array([has_anomaly])),
-            'mask': transformed["masks"][0], 
+            'anomaly_mask': torch.permute(transformed["masks"][0], (2,0,1)), 
             'idx': torch.tensor(np.array([idx])),
             'basename': basename,
             "loc": loc
@@ -312,7 +312,9 @@ class AnomalyDataModule(LightningDataModule):
 
 
     def train_dataset(self) -> MVTecDRAEMTrainDataset:
-        root_dir = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC, self.obj_name, "train/good/")
+        root_dir = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
+            self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC, 
+            self.obj_name, "train/good/")
         anomaly_source_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
             self.cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE)
         
@@ -338,14 +340,14 @@ class AnomalyDataModule(LightningDataModule):
         mvtec_path = os.path.join(self.cfg.ANOMALY_DATASET.DATASET_PATH.ROOT, 
             self.cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC,
             self.obj_name, 
-            "/test/")
+            "test/")
         return MVTecDRAEMTestDataset(self.cfg, mvtec_path, get_test_transforms)
 
     def predict_dataloader(self) -> DataLoader:
-        val_dataset = self.val_dataset()
-        print("Number of test samples: {}".format(len(val_dataset)))
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset,
+        predict_dataset = self.predict_dataset()
+        print("Number of test samples: {}".format(len(predict_dataset)))
+        predict_loader = torch.utils.data.DataLoader(
+            predict_dataset,
             batch_size=self.batch_size,
             shuffle=False,
             pin_memory=True,
@@ -354,7 +356,7 @@ class AnomalyDataModule(LightningDataModule):
             collate_fn=self.collate_fn_wrapper(),
         )
 
-        return val_loader
+        return predict_loader
 
     # @staticmethod
     def collate_fn_wrapper(self):
@@ -373,11 +375,12 @@ class AnomalyDataModule(LightningDataModule):
                 p2d = (0, padding_right, 0, padding_bottom)
                 batch[idx]["image"] =  F.pad(batch[idx]["image"], p2d, "constant", 0)
                 batch[idx]["anomaly_mask"] =  F.pad(batch[idx]["anomaly_mask"], p2d, "constant", 0)
-                batch[idx]["augmented_image"] =  F.pad(batch[idx]["augmented_image"], p2d, "constant", 0)
+                if "augmented_image" in batch[idx].keys():
+                    batch[idx]["augmented_image"] =  F.pad(batch[idx]["augmented_image"], p2d, "constant", 0)
             return {
                 'image': torch.stack([i['image'] for i in batch]),
                 'anomaly_mask': torch.stack([i['anomaly_mask'] for i in batch]),
-                'augmented_image': torch.stack([i['augmented_image'] for i in batch]),
+                'augmented_image': torch.stack([i['augmented_image'] for i in batch]) if "augmented_image" in i.keys() else torch.stack([torch.tensor(0) for _ in batch ]),
                 'has_anomaly': [i['has_anomaly'] for i in batch],
                 'idx': torch.stack([i['idx'] for i in batch]),
                 'original_size': torch.stack([i['original_size'] for i in batch ]) if 'original_size' in i.keys() else torch.stack([torch.tensor(0) for _ in batch ])

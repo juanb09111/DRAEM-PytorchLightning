@@ -13,13 +13,13 @@ SOLVER:
 
 
 CHECKPOINT_PATH_TRAINING: ""
-CHECKPOINT_PATH_INFERENCE: ""
+CHECKPOINT_PATH_INFERENCE: "tb_logs/hazelnut_hazel/version_0/checkpoints/epoch=699-step=67900.ckpt"
 
 ANOMALY_DATASET:
   PREVIEW_DATASET: False
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
-  MAX_SIZE: 256
+  MAX_SIZE: 1280
   DATASET_PATH:
     ROOT: "datasets"
     ANOMALY_SOURCE: "dtd/images"

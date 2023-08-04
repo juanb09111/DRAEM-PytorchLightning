@@ -1,11 +1,16 @@
 import os
 import torch
 import torch.nn as nn
+import torchvision.transforms.functional as TF
+from torchvision.transforms.functional import pil_to_tensor
 import pytorch_lightning as pl
 from .sub_networks import ReconstructiveSubNetwork, DiscriminativeSubNetwork
 from .loss import FocalLoss, SSIM
-
+from detectron2.data import MetadataCatalog
+from detectron2.utils.visualizer import Visualizer
+from PIL import Image
 import os.path
+
 
 
 
@@ -85,14 +90,37 @@ class DRAEM(pl.LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         
-        predictions = self.shared_step(batch)
-        return predictions
-        
-    
-    def on_predict_epoch_end(self, results):
-       
-       return results
-        
+        while batch_idx <= 4:
+            gray_batch = batch["image"]
+            gray_rec = self.reconstructive(gray_batch)
+            joined_in = torch.cat((gray_rec.detach(), gray_batch), dim=1)
+            
+
+            out_mask = self.discriminative(joined_in)
+            out_mask_sm = torch.softmax(out_mask, dim=1)
+
+            t_mask = batch["anomaly_mask"]
+            # print(gray_batch.shape, t_mask.shape)
+
+            for idx, _ in enumerate(batch["image"]): 
+                tb_logger = self.logger.experiment
+                
+                im = batch["image"][idx]
+                mask = out_mask_sm[idx]
+                gt_mask = t_mask[idx]
+                t_ch = torch.unsqueeze(torch.zeros_like(mask[0]), 0)
+
+                heatmap = torch.cat((torch.unsqueeze(mask[1], 0), t_ch, torch.unsqueeze(mask[0], 0)))
+                img = TF.to_pil_image(im)  
+                h_img = TF.to_pil_image(heatmap)
+
+                res = Image.blend(img, h_img, 0.5)
+                
+                tb_logger.add_image("dl_idx_{}_batch_idx_{}_sample_idx_{}/image_".format(dataloader_idx, batch_idx, idx), im)
+                tb_logger.add_image("dl_idx_{}_batch_idx_{}_sample_idx_{}/out_mask_sm_".format(dataloader_idx, batch_idx, idx), pil_to_tensor(res))
+                tb_logger.add_image("dl_idx_{}_batch_idx_{}_sample_idx_{}/t_mask".format(dataloader_idx, batch_idx, idx), gt_mask)
+            break
+            
 
     def configure_optimizers(self):
         print("Optimizer - using {} with lr {}".format(self.cfg.SOLVER.NAME, self.cfg.SOLVER.BASE_LR))
