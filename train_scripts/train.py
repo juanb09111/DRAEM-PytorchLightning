@@ -87,7 +87,7 @@ def train(args):
             auto_lr_find=args.tune,
             log_every_n_steps=np.floor(len(datamodule.train_dataloader())/(cfg.BATCH_SIZE*torch.cuda.device_count())) -1,
             devices=1 if args.tune else list(range(torch.cuda.device_count())),
-            strategy=None if args.tune else "ddp",
+            strategy=None if args.tune else "ddp_find_unused_parameters_false",
             accelerator='gpu',
             num_sanity_val_steps=0,
             fast_dev_run=cfg.SOLVER.FAST_DEV_RUN if args.fast_dev else False,
