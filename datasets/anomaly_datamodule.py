@@ -117,7 +117,8 @@ class MVTecDRAEMTrainDataset(Dataset):
         self.root_dir = root_dir
         self.image_paths = sorted(glob.glob(root_dir+"/*.png"))
 
-        self.anomaly_source_paths = sorted(glob.glob(anomaly_source_path+"/*/*.jpg"))
+        anomaly_folder = cfg.ANOMALY_DATASET.ANOMALY_FOLDER if cfg.ANOMALY_DATASET.ANOMALY_FOLDER != "" else "*"
+        self.anomaly_source_paths = sorted(glob.glob(anomaly_source_path+"/{}/*.jpg".format(anomaly_folder)))
 
         self.augmenters = [iaa.GammaContrast((0.5,2.0),per_channel=True),
                       iaa.MultiplyAndAddToBrightness(mul=(0.8,1.2),add=(-30,30)),
