@@ -11,15 +11,15 @@ SOLVER:
   INIT_WEIGHTS: True
   
 
-
 CHECKPOINT_PATH_TRAINING: ""
-CHECKPOINT_PATH_INFERENCE: "tb_logs/hazelnut_hazel/version_0/checkpoints/epoch=699-step=67900.ckpt"
+CHECKPOINT_PATH_INFERENCE: ""
 
 ANOMALY_DATASET:
   PREVIEW_DATASET: False
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
-  ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
+  MAX_SIZE: 256
+  ANOMALY_FOLDER: "" #e.g. "blanded" or leave empty "" to use all anomaly folders
   DATASET_PATH:
     ROOT: "datasets"
     ANOMALY_SOURCE: "dtd/images"

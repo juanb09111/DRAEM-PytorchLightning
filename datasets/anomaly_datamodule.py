@@ -172,6 +172,7 @@ class MVTecDRAEMTrainDataset(Dataset):
         augmented_image = image * (1 - perlin_thr) + (1 - beta) * img_thr + beta * image * (
             perlin_thr)
 
+        # 50% percent of images contain anomalies
         no_anomaly = torch.rand(1).numpy()[0]
         if no_anomaly > 0.5:
             image = image.astype(np.float32)
