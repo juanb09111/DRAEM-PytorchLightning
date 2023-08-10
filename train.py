@@ -22,7 +22,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     obj_batch = [
-                ['tree'],
                 ['capsule'],
                 ['bottle'],
                 ['carpet'],
@@ -41,8 +40,7 @@ if __name__ == "__main__":
                 ]
 
     if int(args.obj_id) == -1:
-        obj_list = ['tree',
-                    'capsule',
+        obj_list = ['capsule',
                     'bottle',
                     'carpet',
                     'leather',
@@ -63,8 +61,5 @@ if __name__ == "__main__":
         picked_classes = obj_batch[int(args.obj_id)]
     
     args.obj_names = picked_classes
-    # add the ip address to the environment variable so it can be easily avialbale
-    # os.environ['MASTER_ADDR'] = args.ip_adress
-    # print("ip_adress is", args.ip_adress)
     os.environ['MASTER_PORT'] = '12355'
     train.train(args)

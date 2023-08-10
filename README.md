@@ -23,17 +23,15 @@ to download the MVTec and the DTD datasets to the **datasets** folder in the pro
 
 
 ## Training
-Pass the folder containing the training dataset to the **train_DRAEM.py** script as the --data_path argument and the
-folder locating the anomaly source images as the --anomaly_source_path argument. 
-The training script also requires the batch size (--bs), learning rate (--lr), epochs (--epochs), path to store checkpoints
-(--checkpoint_path) and path to store logs (--log_path).
+Modify configs/draem.yml to set the hyperparameters and specify the location of the datasets. Then run train.py as:
+
 Example:
 
 ```
-python train_DRAEM.py --gpu_id 0 --obj_id -1 --lr 0.0001 --bs 8 --epochs 700 --data_path ./datasets/mvtec/ --anomaly_source_path ./datasets/dtd/images/ --checkpoint_path ./checkpoints/ --log_path ./logs/
+python3 train.py --obj_id 1 --config configs/draem.yml --exp_name my_experiment
 ```
 
-The conda environement used in the project is decsribed in **requirements.txt**.
+Tensorboard logs and weights will be saved in the folder named "tb_logs/{obj_name}_{exp_name}".
 
 ## Pretrained models
 Pretrained DRAEM models for each class of the MVTec anomaly detection dataset are available [here](https://drive.google.com/uc?id=1eOE8wXNihjsiDvDANHFbg_mQkLesDrs1).
@@ -42,13 +40,17 @@ To download the pretrained models directly see **./scripts/download_pretrained.s
 The pretrained models achieve a 98.1 image-level ROC AUC, 97.5 pixel-wise ROC AUC and a 68.9 pixel-wise AP.
 
 
-## Evaluating
-The test script requires the --gpu_id arguments, the name of the checkpoint files (--base_model_name) for trained models, the 
-location of the MVTec anomaly detection dataset (--data_path) and the folder where the checkpoint files are located (--checkpoint_path)
-with pretrained models can be run with:
+## Inference
+To do inference simply specify the weights file in configs/draem.yml and pass the flag (--predict) to train.py 
 
 ```
-python test_DRAEM.py --gpu_id 0 --base_model_name "DRAEM_seg_large_ae_large_0.0001_800_bs8" --data_path ./datasets/mvtec/ --checkpoint_path ./checkpoints/DRAEM_checkpoints/
+python3 train.py --obj_id 1 --predict --config configs/draem.yml --exp_name my_experiment
+```
+
+The results are saved as tensorboards saved in "tb_logs/{obj_name}_{exp_name}_predict". To see the results run:
+
+```
+tensorboard --logdir=./tb_logs/{obj_name}_{exp_name}_predict/{version}
 ```
 
 
