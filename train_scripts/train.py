@@ -49,7 +49,7 @@ def train(args):
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         checkpoint_path = checkpoint_path if checkpoint_path != None else ""
-
+        
         model = DRAEM
         # Create model or load a checkpoint
         if os.path.exists(checkpoint_path):
@@ -78,7 +78,7 @@ def train(args):
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
         exp_name = "{}_{}_predict".format(obj_name, args.exp_name) if args.predict else "{}_{}".format(obj_name, args.exp_name)
-        tb_logger = pl_loggers.TensorBoardLogger("tb_logs", name=exp_name)
+        tb_logger = pl_loggers.TensorBoardLogger("tb_logs_predict", name=exp_name)
         # # Create a pytorch lighting trainer
         trainer = pl.Trainer(
             # weights_summary='full',

@@ -12,14 +12,14 @@ SOLVER:
   
 
 CHECKPOINT_PATH_TRAINING: ""
-CHECKPOINT_PATH_INFERENCE: ""
+CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr_lab/version_0/checkpoints/epoch=699-step=485100.ckpt"
 
 ANOMALY_DATASET:
-  PREVIEW_DATASET: False
+  PREVIEW_DATASET: True
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
   MAX_SIZE: 256
-  ANOMALY_FOLDER: "" #e.g. "blanded" or leave empty "" to use all anomaly folders
+  ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
   DATASET_PATH:
     ROOT: "datasets"
     ANOMALY_SOURCE: "dtd/images"

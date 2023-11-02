@@ -9,8 +9,8 @@ class ReconstructiveSubNetwork(nn.Module):
         self.decoder = DecoderReconstructive(base_width, out_channels=out_channels)
 
     def forward(self, x):
-        b5 = self.encoder(x)
-        output = self.decoder(b5)
+        b5, b4, b3, b2, b1 = self.encoder(x)
+        output = self.decoder(b5, b4, b3, b2, b1)
         return output
 
 class DiscriminativeSubNetwork(nn.Module):
@@ -197,7 +197,7 @@ class DecoderDiscriminative(nn.Module):
 
 
 class EncoderReconstructive(nn.Module):
-    def __init__(self, in_channels, base_width):
+    def __init__(self, in_channels, base_width, dropout_prob=0.5, l2_reg=1e-5):
         super(EncoderReconstructive, self).__init__()
         self.block1 = nn.Sequential(
             nn.Conv2d(in_channels,base_width, kernel_size=3, padding=1),
@@ -205,7 +205,8 @@ class EncoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width, base_width, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob))  # Add dropout here
         self.mp1 = nn.Sequential(nn.MaxPool2d(2))
         self.block2 = nn.Sequential(
             nn.Conv2d(base_width,base_width*2, kernel_size=3, padding=1),
@@ -213,7 +214,8 @@ class EncoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*2, base_width*2, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*2),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob))  # Add dropout here
         self.mp2 = nn.Sequential(nn.MaxPool2d(2))
         self.block3 = nn.Sequential(
             nn.Conv2d(base_width*2,base_width*4, kernel_size=3, padding=1),
@@ -221,7 +223,8 @@ class EncoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*4, base_width*4, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*4),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob))  # Add dropout here
         self.mp3 = nn.Sequential(nn.MaxPool2d(2))
         self.block4 = nn.Sequential(
             nn.Conv2d(base_width*4,base_width*8, kernel_size=3, padding=1),
@@ -229,7 +232,8 @@ class EncoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*8, base_width*8, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*8),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob))  # Add dropout here
         self.mp4 = nn.Sequential(nn.MaxPool2d(2))
         self.block5 = nn.Sequential(
             nn.Conv2d(base_width*8,base_width*8, kernel_size=3, padding=1),
@@ -237,7 +241,13 @@ class EncoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*8, base_width*8, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*8),
-            nn.ReLU(inplace=True))
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob))  # Add dropout here
+
+        # Add L2 regularization to all convolutional layers
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                module.weight.data.add_(l2_reg, module.weight.data)
 
 
     def forward(self, x):
@@ -250,11 +260,11 @@ class EncoderReconstructive(nn.Module):
         b4 = self.block4(mp3)
         mp4 = self.mp4(b4)
         b5 = self.block5(mp4)
-        return b5
+        return b5, b4, b3, b2, b1
 
 
 class DecoderReconstructive(nn.Module):
-    def __init__(self, base_width, out_channels=1):
+    def __init__(self, base_width, out_channels=1, dropout_prob=0.5):
         super(DecoderReconstructive, self).__init__()
 
         self.up1 = nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
@@ -267,7 +277,8 @@ class DecoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width * 8, base_width * 4, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width * 4),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob)  # Add dropout here
         )
 
         self.up2 = nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
@@ -280,7 +291,8 @@ class DecoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width * 4, base_width * 2, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width * 2),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob)  # Add dropout here
         )
 
         self.up3 = nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
@@ -294,7 +306,8 @@ class DecoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*2, base_width*1, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*1),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob)  # Add dropout here
         )
 
         self.up4 = nn.Sequential(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True),
@@ -307,24 +320,27 @@ class DecoderReconstructive(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width, base_width, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(dropout_prob)  # Add dropout here
         )
 
         self.fin_out = nn.Sequential(nn.Conv2d(base_width, out_channels, kernel_size=3, padding=1))
         #self.fin_out = nn.Conv2d(base_width, out_channels, kernel_size=3, padding=1)
 
-    def forward(self, b5):
+    def forward(self, b5, b4, b3, b2, b1):
+        
         up1 = self.up1(b5)
-        db1 = self.db1(up1)
+        db1 = self.db1(up1)  
 
         up2 = self.up2(db1)
-        db2 = self.db2(up2)
+        db2 = self.db2(up2) 
 
         up3 = self.up3(db2)
-        db3 = self.db3(up3)
+        db3 = self.db3(up3)  
 
         up4 = self.up4(db3)
-        db4 = self.db4(up4)
+        db4 = self.db4(up4)  
 
         out = self.fin_out(db4)
+
         return out
