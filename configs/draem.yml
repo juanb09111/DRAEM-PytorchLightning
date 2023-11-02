@@ -1,6 +1,6 @@
 # VERSION: 2
 
-BATCH_SIZE: 4
+BATCH_SIZE: 2
 SOLVER:
   NAME: "Adam" # Adam or SGD
   WARMUP_ITERS: 100 # Set to 0 for no warmup
@@ -19,6 +19,7 @@ ANOMALY_DATASET:
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
   MAX_SIZE: 256
+  MAX_SIZES: (256, 384, 512)
   ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
   DATASET_PATH:
     ROOT: "datasets"

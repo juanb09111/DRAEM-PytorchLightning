@@ -48,21 +48,24 @@ class MVTecDRAEMTestDataset(Dataset):
         # mask = np.transpose(mask, (2, 0, 1))
         return image, mask
     
-    def find_new_size(self, image_path):
+    def find_new_sizes(self, image_path):
         image = cv2.imread(image_path)
-        max_size = self.cfg.ANOMALY_DATASET.MAX_SIZE
-        f1 = max_size / image.shape[1]
-        f2 = max_size / image.shape[0]
-        min_val = min(f1,f2)
-        if min_val < 1:
-            resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
-        else:
-            resize_shape = (image.shape[0], image.shape[1])
-        
-        #round
-        n=64
-        resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
-        return resize_shape
+        sizes_arr = []
+        for max_size in self.cfg.ANOMALY_DATASET.MAX_SIZES:
+
+            f1 = max_size / image.shape[1]
+            f2 = max_size / image.shape[0]
+            min_val = min(f1,f2)
+            if min_val < 1:
+                resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
+            else:
+                resize_shape = (image.shape[0], image.shape[1])
+            
+            #round
+            n=64
+            resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
+            sizes_arr = [*sizes_arr, resize_shape]
+        return sizes_arr
 
 
     def __getitem__(self, idx):
@@ -70,46 +73,62 @@ class MVTecDRAEMTestDataset(Dataset):
             idx = idx.tolist()
 
         img_path = self.images[idx]
-        resize_shape = self.find_new_size(img_path)
+        resize_shapes = self.find_new_sizes(img_path)
         dir_path, file_name = os.path.split(img_path)
         base_dir = os.path.basename(dir_path)
-        if base_dir == 'good':
-            image, mask = self.transform_image(img_path, None, resize_shape)
-            has_anomaly = np.array([0], dtype=np.float32)
-        else:
-            mask_path = os.path.join(dir_path, '../../ground_truth/')
-            mask_path = os.path.join(mask_path, base_dir)
-            mask_file_name = file_name.split(".")[0]+"_mask.png"
-            mask_path = os.path.join(mask_path, mask_file_name)
-            image, mask = self.transform_image(img_path, mask_path, resize_shape)
-            has_anomaly = np.array([1], dtype=np.float32)
-
-
-        apply_transforms = self.transforms(self.cfg)
         
-        transformed = apply_transforms(
-            image=image,
-            masks=[mask]
-        )
-
         basename = self.images[idx].split("/")[-1].split(".")[0]
         loc = "/".join(self.images[idx].split("/")[1:-1])
 
+        imgs_obj = {}
 
-        bp = BlurPool2D(kernel_size=5, stride=1)
-        source_img_bp = bp(torch.unsqueeze(transformed["image"], dim=0))
-        # lab_image = rgb_to_lab(source_img_bp)
+        for i, size in enumerate(["s", "m", "l"]):
+            resize_shape = resize_shapes[i]
 
-        sample = {'image': torch.squeeze(source_img_bp, dim=0),
-        # sample = {'image': transformed["image"],
-            'has_anomaly': torch.tensor(np.array([has_anomaly])),
-            'anomaly_mask': torch.permute(transformed["masks"][0], (2,0,1)), 
+            if base_dir == 'good':
+                has_anomaly = np.array([0], dtype=np.float32)
+                image, mask = self.transform_image(img_path, None, resize_shape)
+            else:
+                mask_path = os.path.join(dir_path, '../../ground_truth/')
+                mask_path = os.path.join(mask_path, base_dir)
+                mask_file_name = file_name.split(".")[0]+"_mask.png"
+                mask_path = os.path.join(mask_path, mask_file_name)
+                image, mask = self.transform_image(img_path, mask_path, resize_shape)
+                has_anomaly = np.array([1], dtype=np.float32)
+
+
+            apply_transforms = self.transforms(self.cfg)
+            
+            transformed = apply_transforms(
+                image=image,
+                masks=[mask]
+            )
+
+
+
+            bp = BlurPool2D(kernel_size=5, stride=1)
+            source_img_bp = bp(torch.unsqueeze(transformed["image"], dim=0))
+            # lab_image = rgb_to_lab(source_img_bp)
+            imgs_obj[size] = {
+                'image': torch.squeeze(source_img_bp, dim=0),
+                'anomaly_mask': torch.permute(transformed["masks"][0], (2,0,1)),
+            }
+
+        return {
+            "image_small": imgs_obj["s"]["source_img"],
+            "image_medium": imgs_obj["m"]["source_img"],
+            "image_large": imgs_obj["l"]["source_img"],
+
+            "anomaly_mask_small": imgs_obj["s"]["anomaly_mask"],
+            "anomaly_mask_medium": imgs_obj["m"]["anomaly_mask"],
+            "anomaly_mask_large": imgs_obj["l"]["anomaly_mask"],
+
             'idx': torch.tensor(np.array([idx])),
             'basename': basename,
-            "loc": loc
+            "loc": loc,
+            'has_anomaly': torch.tensor(np.array([has_anomaly]))
         }
 
-        return sample
 
 
 
@@ -144,6 +163,7 @@ class MVTecDRAEMTrainDataset(Dataset):
 
         self.transforms = transforms
         self.cfg = cfg
+        self.no_anomaly = 0
 
     def __len__(self):
         return len(self.image_paths)
@@ -181,8 +201,8 @@ class MVTecDRAEMTrainDataset(Dataset):
             perlin_thr)
 
         # 50% percent of images contain anomalies
-        no_anomaly = torch.rand(1).numpy()[0]
-        if no_anomaly > 0.5:
+        # no_anomaly = torch.rand(1).numpy()[0]
+        if self.no_anomaly > 0.5:
             image = image.astype(np.float32)
             return image, np.zeros_like(perlin_thr, dtype=np.float32), np.array([0.0],dtype=np.float32)
         else:
@@ -200,9 +220,9 @@ class MVTecDRAEMTrainDataset(Dataset):
 
         image = cv2.resize(image, dsize=(resize_shape[1], resize_shape[0]), interpolation=cv2.INTER_NEAREST)
 
-        do_aug_orig = torch.rand(1).numpy()[0] > 0.7
-        if do_aug_orig:
-            image = self.rot(image=image)
+        # do_aug_orig = torch.rand(1).numpy()[0] > 0.7
+        # if do_aug_orig:
+        #     image = self.rot(image=image)
 
         image = np.array(image).reshape((image.shape[0], image.shape[1], image.shape[2])).astype(np.float32) / 255.0
         augmented_image, anomaly_mask, has_anomaly = self.augment_image(image, anomaly_source_path, resize_shape)
@@ -211,59 +231,83 @@ class MVTecDRAEMTrainDataset(Dataset):
         # anomaly_mask = np.transpose(anomaly_mask, (2, 0, 1))
         return image, augmented_image, anomaly_mask, has_anomaly
     
-    def find_new_size(self, image_path):
+    def find_new_sizes(self, image_path):
         image = cv2.imread(image_path)
-        max_size = self.cfg.ANOMALY_DATASET.MAX_SIZE
-        f1 = max_size / image.shape[1]
-        f2 = max_size / image.shape[0]
-        min_val = min(f1,f2)
-        if min_val < 1:
-            resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
-        else:
-            resize_shape = (image.shape[0], image.shape[1])
-        
-        #round
-        n=64
-        resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
-        return resize_shape
+        sizes_arr = []
+        for max_size in self.cfg.ANOMALY_DATASET.MAX_SIZES:
+
+            f1 = max_size / image.shape[1]
+            f2 = max_size / image.shape[0]
+            min_val = min(f1,f2)
+            if min_val < 1:
+                resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
+            else:
+                resize_shape = (image.shape[0], image.shape[1])
+            
+            #round
+            n=64
+            resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
+            sizes_arr = [*sizes_arr, resize_shape]
+        return sizes_arr
 
     def __getitem__(self, idx):
         idx = torch.randint(0, len(self.image_paths), (1,)).item()
-        resize_shape = self.find_new_size(self.image_paths[idx])
         anomaly_source_idx = torch.randint(0, len(self.anomaly_source_paths), (1,)).item()
-        image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx], self.anomaly_source_paths[anomaly_source_idx], resize_shape)
         
-
         basename = self.image_paths[idx].split("/")[-1].split(".")[0]
         loc = "/".join(self.image_paths[idx].split("/")[1:-1])
 
+        imgs_obj = {}
+        resize_shapes = self.find_new_sizes(self.image_paths[idx])
+
+        self.no_anomaly = torch.rand(1).numpy()[0]
+        for i, size in enumerate(["s", "m", "l"]):
+            resize_shape = resize_shapes[i]
+            image, augmented_image, anomaly_mask, has_anomaly = self.transform_image(self.image_paths[idx], self.anomaly_source_paths[anomaly_source_idx], resize_shape)
+            
+
+
+            
+            apply_transforms = self.transforms(self.cfg)
+
+            transformed = apply_transforms(
+                image=image,
+                masks=[anomaly_mask]
+            )
+
+            transformed_augmented = apply_transforms(image=augmented_image) 
+            
+            bp = BlurPool2D(kernel_size=5, stride=1)
+            source_img = bp(torch.unsqueeze(transformed["image"], dim=0))
+            # source_img = rgb_to_lab(source_img)
+
+            augmented_image = bp(torch.unsqueeze(transformed_augmented["image"], dim=0))
+            # augmented_image = rgb_to_lab(augmented_image)
+
+            imgs_obj[size] = {'source_img': torch.squeeze(source_img, dim=0),
+                "anomaly_mask": torch.permute(transformed["masks"][-1], (2,0,1)),
+                'augmented_image': torch.squeeze(augmented_image, dim=0)
+            }
         
-        apply_transforms = self.transforms(self.cfg)
+        return {
+            "image_small": imgs_obj["s"]["source_img"],
+            "image_medium": imgs_obj["m"]["source_img"],
+            "image_large": imgs_obj["l"]["source_img"],
 
-        transformed = apply_transforms(
-            image=image,
-            masks=[anomaly_mask]
-        )
+            "anomaly_mask_small": imgs_obj["s"]["anomaly_mask"],
+            "anomaly_mask_medium": imgs_obj["m"]["anomaly_mask"],
+            "anomaly_mask_large": imgs_obj["l"]["anomaly_mask"],
 
-        transformed_augmented = apply_transforms(image=augmented_image) 
-        
-        bp = BlurPool2D(kernel_size=5, stride=1)
-        source_img = bp(torch.unsqueeze(transformed["image"], dim=0))
-        # source_img = rgb_to_lab(source_img)
+            "augmented_image_small": imgs_obj["s"]["augmented_image"],
+            "augmented_image_medium": imgs_obj["m"]["augmented_image"],
+            "augmented_image_large": imgs_obj["l"]["augmented_image"],
 
-        augmented_image = bp(torch.unsqueeze(transformed_augmented["image"], dim=0))
-        # augmented_image = rgb_to_lab(augmented_image)
-
-        sample = {'image': torch.squeeze(source_img, dim=0),
-            "anomaly_mask": torch.permute(transformed["masks"][-1], (2,0,1)),
-            'augmented_image': torch.squeeze(augmented_image, dim=0), 
             'has_anomaly': torch.tensor(np.array([has_anomaly])), 
             'idx': torch.tensor(np.array([idx])),
             "loc": loc,
             "basename": basename
         }
 
-        return sample
 
 
 
@@ -287,20 +331,36 @@ def test_dataset(cfg, dataset, item):
 
     # print(item)
     sample = dataset.__getitem__(item)
-    image = sample["image"]
-    augmented_image = sample["augmented_image"]
+
+    image_small = sample["image_small"]
+    image_medium = sample["image_medium"]
+    image_large = sample["image_large"]
+
+
+    augmented_image_small = sample["augmented_image_small"]
+    augmented_image_medium = sample["augmented_image_medium"]
+    augmented_image_large = sample["augmented_image_large"]
     # print(sample["loc"], sample["basename"])
+
     preview_loc = os.path.join("datasets/preview/", sample["loc"])
     p = Path(preview_loc)
     p.mkdir(parents=True, exist_ok=True)
-    save_image(image, os.path.join(preview_loc, sample["basename"]+".png"))
-    save_image(augmented_image, os.path.join(preview_loc, sample["basename"]+"_augmented.png"))
+
+    save_image(image_small, os.path.join(preview_loc, sample["basename"]+"_small.png"))
+    save_image(image_medium, os.path.join(preview_loc, sample["basename"]+"_medium.png"))
+    save_image(image_large, os.path.join(preview_loc, sample["basename"]+"_large.png"))
+
+
+    save_image(augmented_image_small, os.path.join(preview_loc, sample["basename"]+"_augmented_small.png"))
+    save_image(augmented_image_medium, os.path.join(preview_loc, sample["basename"]+"_augmented_medium.png"))
+    save_image(augmented_image_large, os.path.join(preview_loc, sample["basename"]+"_augmented_large.png"))
 
     # Visualize Semantic
     for sem in ["anomaly_mask"]:
-        im = torch.squeeze(sample[sem])
-        plt.imshow(im)
-        plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask.png"))
+        for s in ["_small", "_medium", "_large"]:
+            im = torch.squeeze(sample[sem+s])
+            plt.imshow(im)
+            plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask{}.png".format(s)))
     
 
 
@@ -380,27 +440,48 @@ class AnomalyDataModule(LightningDataModule):
         def collate_fn(batch):
             max_width = 0
             max_height = 0
-            for sample in batch:
-                sample_image_shape = sample["image"].shape
-                max_height = max_height if max_height > sample_image_shape[-2] else sample_image_shape[-2]
-                max_width = max_width if max_width > sample_image_shape[-1] else sample_image_shape[-1]
-            
+
+            for s in batch:
+
+                for im in [s["image_small"], s["image_medium"], s["image_large"]]:
+
+                    sample_image_shape = im.shape
+                    max_height = max_height if max_height > sample_image_shape[-2] else sample_image_shape[-2]
+                    max_width = max_width if max_width > sample_image_shape[-1] else sample_image_shape[-1]
+
+          
+            images_list = []
+            anomaly_mask_list = []
+            augmented_image_list = []
+            has_anomaly_list = []
+            idx_list = []
+            sizes_arr = ["small", "medium", "large"]
+
             for idx, i in enumerate(batch):
-                batch[idx]["original_size"] = torch.tensor([batch[idx]["image"].shape])
-                padding_right = max_width - batch[idx]["image"].shape[-1]
-                padding_bottom = max_height - batch[idx]["image"].shape[-2]
-                p2d = (0, padding_right, 0, padding_bottom)
-                batch[idx]["image"] =  F.pad(batch[idx]["image"], p2d, "constant", 0)
-                batch[idx]["anomaly_mask"] =  F.pad(batch[idx]["anomaly_mask"], p2d, "constant", 0)
-                if "augmented_image" in batch[idx].keys():
-                    batch[idx]["augmented_image"] =  F.pad(batch[idx]["augmented_image"], p2d, "constant", 0)
+
+                for s in sizes_arr:
+
+                    batch[idx]["original_size"] = torch.tensor([batch[idx]["image_"+s].shape])
+                    padding_right = max_width - batch[idx]["image_"+s].shape[-1]
+                    padding_bottom = max_height - batch[idx]["image_"+s].shape[-2]
+                    p2d = (0, padding_right, 0, padding_bottom)
+                    image =  F.pad(batch[idx]["image_"+s], p2d, "constant", 0)
+                    anomaly_mask =  F.pad(batch[idx]["anomaly_mask_"+s], p2d, "constant", 0)
+                    if "augmented_image_"+s in batch[idx].keys():
+                        augmented_image =  F.pad(batch[idx]["augmented_image_"+s], p2d, "constant", 0)
+                        augmented_image_list.append(augmented_image)
+                    
+                    images_list.append(image)
+                    anomaly_mask_list.append(anomaly_mask)
+                    has_anomaly_list.append(batch[idx]["has_anomaly"])
+                    idx_list.append(batch[idx]["idx"])
+
             return {
-                'image': torch.stack([i['image'] for i in batch]),
-                'anomaly_mask': torch.stack([i['anomaly_mask'] for i in batch]),
-                'augmented_image': torch.stack([i['augmented_image'] for i in batch]) if "augmented_image" in i.keys() else torch.stack([torch.tensor(0) for _ in batch ]),
-                'has_anomaly': [i['has_anomaly'] for i in batch],
-                'idx': torch.stack([i['idx'] for i in batch]),
-                'original_size': torch.stack([i['original_size'] for i in batch ]) if 'original_size' in i.keys() else torch.stack([torch.tensor(0) for _ in batch ])
+                'image': torch.stack(images_list),
+                'anomaly_mask': torch.stack(anomaly_mask_list),
+                'augmented_image': torch.stack(augmented_image_list) if len(augmented_image_list) > 0 else torch.stack([torch.tensor(0) for i in range(len(images_list)) ]),
+                'has_anomaly': has_anomaly_list,
+                'idx': torch.stack(idx_list)
             }
         return collate_fn
 

@@ -1,6 +1,10 @@
 import torch
 import numpy as np
 import os
+
+from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+
 import logging
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import (
@@ -44,8 +48,30 @@ def train(args):
     torch.cuda.empty_cache()
     for obj_name in args.obj_names:
 
-        datamodule = AnomalyDataModule(cfg, obj_name, test=True)
+        datamodule = AnomalyDataModule(cfg, obj_name, test=False)
         
+        #  #Test datamodule
+
+        # train_dataloader = datamodule.train_dataloader()
+        # n = 0
+        # for batch in train_dataloader:
+
+        #     print(batch["image"].shape, batch["anomaly_mask"].shape, batch["augmented_image"].shape)
+
+            
+        #     for idx, image in enumerate(batch["image"]):
+
+        #         augmented_image = batch["augmented_image"][idx]
+        #         anomaly_mask = batch["anomaly_mask"][idx]
+                
+
+        #         save_image(image, os.path.join("datasets/preview/trees_ms_batch", "source_img_{}.png".format(n)))
+        #         save_image(augmented_image, os.path.join("datasets/preview/trees_ms_batch", "augmented_image_{}.png".format(n)))
+
+        #         plt.imshow(torch.squeeze(anomaly_mask))
+        #         plt.savefig(os.path.join("datasets/preview/trees_ms_batch", "anomaly_mask_{}.png".format(n)))
+
+        #         n = n+1
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         checkpoint_path = checkpoint_path if checkpoint_path != None else ""
