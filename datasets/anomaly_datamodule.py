@@ -14,12 +14,14 @@ from torchvision.utils import save_image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import matplotlib.pyplot as plt
+from kornia.filters.blur_pool import BlurPool2D
+# from kornia.color import rgb_to_lab
 
 class MVTecDRAEMTestDataset(Dataset):
 
     def __init__(self, cfg, root_dir, transforms):
         self.root_dir = root_dir
-        self.images = sorted(glob.glob(root_dir+"/*/*.png"))
+        self.images = sorted(glob.glob(root_dir+"/scratch/*.png"))
         self.transforms = transforms
         self.cfg = cfg
 
@@ -93,7 +95,13 @@ class MVTecDRAEMTestDataset(Dataset):
         basename = self.images[idx].split("/")[-1].split(".")[0]
         loc = "/".join(self.images[idx].split("/")[1:-1])
 
-        sample = {'image': transformed["image"],
+
+        bp = BlurPool2D(kernel_size=5, stride=1)
+        source_img_bp = bp(torch.unsqueeze(transformed["image"], dim=0))
+        # lab_image = rgb_to_lab(source_img_bp)
+
+        sample = {'image': torch.squeeze(source_img_bp, dim=0),
+        # sample = {'image': transformed["image"],
             'has_anomaly': torch.tensor(np.array([has_anomaly])),
             'anomaly_mask': torch.permute(transformed["masks"][0], (2,0,1)), 
             'idx': torch.tensor(np.array([idx])),
@@ -189,7 +197,7 @@ class MVTecDRAEMTrainDataset(Dataset):
         image = cv2.imread(image_path)
         # print("image_shape", image.shape, resize_shape)
 
-        image = cv2.resize(image, dsize=(resize_shape[1], resize_shape[0]))
+        image = cv2.resize(image, dsize=(resize_shape[1], resize_shape[0]), interpolation=cv2.INTER_NEAREST)
 
         do_aug_orig = torch.rand(1).numpy()[0] > 0.7
         if do_aug_orig:
@@ -238,9 +246,16 @@ class MVTecDRAEMTrainDataset(Dataset):
 
         transformed_augmented = apply_transforms(image=augmented_image) 
         
-        sample = {'image': transformed["image"],
+        bp = BlurPool2D(kernel_size=5, stride=1)
+        source_img = bp(torch.unsqueeze(transformed["image"], dim=0))
+        # source_img = rgb_to_lab(source_img)
+
+        augmented_image = bp(torch.unsqueeze(transformed_augmented["image"], dim=0))
+        # augmented_image = rgb_to_lab(augmented_image)
+
+        sample = {'image': torch.squeeze(source_img, dim=0),
             "anomaly_mask": torch.permute(transformed["masks"][-1], (2,0,1)),
-            'augmented_image': transformed_augmented["image"], 
+            'augmented_image': torch.squeeze(augmented_image, dim=0), 
             'has_anomaly': torch.tensor(np.array([has_anomaly])), 
             'idx': torch.tensor(np.array([idx])),
             "loc": loc,
