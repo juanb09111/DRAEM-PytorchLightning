@@ -19,7 +19,7 @@ ANOMALY_DATASET:
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
   MAX_SIZE: 256
-  MAX_SIZES: (256, 384, 512)
+  MAX_SIZES: (128, 256, 384)
   ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
   DATASET_PATH:
     ROOT: "datasets"
