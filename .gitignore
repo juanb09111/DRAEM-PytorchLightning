@@ -27,6 +27,7 @@ datasets/mvtec
 *.txt
 *.png
 *.jpg
+*.sh
 **/*.zip
 **/__pycache__
 *.ipynb
