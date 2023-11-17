@@ -22,6 +22,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     obj_batch = [
+                ['JDTuni100'],
                 ['tree_extended'],
                 ['tree'],
                 ['capsule'],
@@ -42,7 +43,8 @@ if __name__ == "__main__":
                 ]
 
     if int(args.obj_id) == -1:
-        obj_list = ['tree_extended',
+        obj_list = ['JDTuni100',
+                    'tree_extended',
                     'tree',
                     'capsule',
                     'bottle',
