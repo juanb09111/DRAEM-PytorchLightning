@@ -1,6 +1,6 @@
 # VERSION: 2
 
-BATCH_SIZE: 4
+BATCH_SIZE: 1
 SOLVER:
   NAME: "Adam" # Adam or SGD
   WARMUP_ITERS: 100 # Set to 0 for no warmup
@@ -31,4 +31,30 @@ ANOMALY_DATASET:
     ROOT: "datasets"
     ANOMALY_SOURCE: "dtd/images"
     MVTEC: "mvtec"
-    
+
+TREES_DATASET:
+  PREVIEW_DATASET: True
+  MAX_SAMPLES: null #Number of training samples, null for all
+  SHUFFLE: True
+  MAX_SIZE: 256
+  DATASET_PATH:
+      # ROOT: "datasets/augmented_splits_negative_samples"
+      # ROOT: "datasets/aug_neg_sem_balanced_alpha_0.4"
+      
+      # ROOT: "datasets/synth_anomaly_2023_noWood_alpha_0.5"
+      ROOT: "datasets/synth_anomaly_May2023"
+      RGB_TRAIN: "train/augmented"
+
+      RGB_VALID: "val/augmented"
+
+      RGB_TEST: "test/augmented"
+      
+      #GT:
+      SEMANTIC: "semantic_masks"
+      SEMANTIC_ANOMALY: "anomaly_gt"
+      SEMANTIC_BARK: "bark_gt"
+
+      # VALID_PRED_DIR: "preds_valid"
+      # PRED_DIR: "preds"
+      # PRED_DIR_SEMANTIC: "preds_trained_blurr_test_no_blurr_June"
+      # PRED_JSON_SEMANTIC: "semantic_predictions.json"

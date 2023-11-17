@@ -21,6 +21,23 @@ def add_custom_params(cfg):
     cfg.ANOMALY_DATASET.DATASET_PATH.ANOMALY_SOURCE = ""
     cfg.ANOMALY_DATASET.DATASET_PATH.MVTEC = ""
     
+
+    cfg.TREES_DATASET = CfgNode()
+    cfg.TREES_DATASET.MAX_SAMPLES = 100
+    cfg.TREES_DATASET.PREVIEW_DATASET = True
+    cfg.TREES_DATASET.SHUFFLE = True
+    cfg.TREES_DATASET.MAX_SIZE = 1500
+    cfg.TREES_DATASET.DATASET_PATH = CfgNode()
+
+    cfg.TREES_DATASET.DATASET_PATH.ROOT = "datasets/synth_anomaly_May2023"
+    cfg.TREES_DATASET.DATASET_PATH.RGB_TRAIN = "train/augmented"
+    cfg.TREES_DATASET.DATASET_PATH.RGB_VALID = "val/augmented"
+    cfg.TREES_DATASET.DATASET_PATH.RGB_TEST = "test/augmented"
+    cfg.TREES_DATASET.DATASET_PATH.SEMANTIC = "semantic_masks"
+    cfg.TREES_DATASET.DATASET_PATH.SEMANTIC_ANOMALY = "anomaly_gt"
+    cfg.TREES_DATASET.DATASET_PATH.SEMANTIC_BARK = "bark_gt"
+
+
     # Solver
     cfg.SOLVER.NAME = "SGD"
     cfg.SOLVER.ACCUMULATE_GRAD = 1

@@ -78,8 +78,10 @@ class DRAEM(pl.LightningModule):
         loss = dict()
         predictions = dict()
         aug_gray_batch = inputs["augmented_image"]
+        # print(aug_gray_batch.shape)
 
         gray_rec = self.reconstructive(aug_gray_batch)
+        # print(gray_rec.shape)
         joined_in = torch.cat((gray_rec, aug_gray_batch), dim=1)
 
         out_mask = self.discriminative(joined_in)

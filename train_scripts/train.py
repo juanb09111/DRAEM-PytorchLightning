@@ -18,6 +18,7 @@ from model.draem import DRAEM
 from utils.add_custom_params import add_custom_params
 
 from datasets.anomaly_datamodule import AnomalyDataModule
+from datasets.trees_datamodule import AnomalyDataModule as treeDataModule
 
 
 def weights_init(m):
@@ -44,8 +45,8 @@ def train(args):
     torch.cuda.empty_cache()
     for obj_name in args.obj_names:
 
-        datamodule = AnomalyDataModule(cfg, obj_name, test=False)
-        
+        datamodule = treeDataModule(cfg, obj_name, test=True)
+        # datamodule = AnomalyDataModule(cfg, obj_name, test=False)
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         checkpoint_path = checkpoint_path if checkpoint_path != None else ""

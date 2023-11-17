@@ -23,6 +23,8 @@ from tqdm import tqdm
 import albumentations as A
 from albumentations.core.transforms_interface import ImageOnlyTransform
 
+from kornia.filters.blur_pool import BlurPool2D
+
 
 
 torch.manual_seed(0)
@@ -88,7 +90,23 @@ class AnomalyDataset(torch.utils.data.Dataset):
 
         if cfg.TREES_DATASET.MAX_SAMPLES != None:
             self.imgs = self.imgs[:cfg.TREES_DATASET.MAX_SAMPLES]
+    
+    def find_new_size(self, image_path):
+        image = cv2.imread(image_path)
+        max_size = self.cfg.ANOMALY_DATASET.MAX_SIZE
+        f1 = max_size / image.shape[1]
+        f2 = max_size / image.shape[0]
+        min_val = min(f1,f2)
+        if min_val < 1:
+            resize_shape = (int(image.shape[0] * min_val), int(image.shape[1] * min_val))
+        else:
+            resize_shape = (image.shape[0], image.shape[1])
         
+        #round
+        n=64
+        resize_shape = (max(int(64), round(resize_shape[0] / n) * n), max(int(64), round(resize_shape[1] / n) * n))
+        return resize_shape
+
 
     def __getitem__(self, index):
 
@@ -97,6 +115,8 @@ class AnomalyDataset(torch.utils.data.Dataset):
         basename = img_filename.split(".")[-2].split("/")[-1] if self.split == "test" else "_".join(img_filename.split(".")[-2].split("/")[-1].split("_")[1:])
        
         img_filename = os.path.join(img_filename)
+        resize_shape = self.find_new_size(img_filename)
+        # print(resize_shape)
         source_img = np.asarray(Image.open(img_filename))
         tree_used_fname = list(filter(lambda im: basename in im, self.trees_used))[0]
         tree_used = np.asarray(Image.open(tree_used_fname))
@@ -112,7 +132,7 @@ class AnomalyDataset(torch.utils.data.Dataset):
 
             if self.transforms is not None:
 
-                apply_transforms = self.transforms(self.cfg, resize=resize)
+                apply_transforms = self.transforms(self.cfg, resize_shape=resize_shape)
                 
                 transformed = apply_transforms(
                     image=source_img,
@@ -132,7 +152,7 @@ class AnomalyDataset(torch.utils.data.Dataset):
         else:
             if self.transforms is not None:
 
-                apply_transforms = self.transforms(self.cfg, resize=resize)
+                apply_transforms = self.transforms(self.cfg, resize_shape=resize_shape)
                 
                 transformed = apply_transforms(
                     image=source_img,
@@ -141,11 +161,15 @@ class AnomalyDataset(torch.utils.data.Dataset):
 
                 source_img = transformed["image"]
         
-        has_anomaly = "noAnomaly" not in tree_used_fname
+        # has_anomaly = "noAnomaly" not in tree_used_fname
+        has_anomaly = len(torch.unique(semantic_anomaly)) > 1
 
-        sample = {'image': transformed["image0"],
+        bp = BlurPool2D(kernel_size=5, stride=1)
+        augmented_image = bp(torch.unsqueeze(transformed["image"]/255.0, dim=0))
+
+        sample = {'image': transformed["image0"]/255.0,
             "anomaly_mask": semantic_anomaly if self.split != "test" else torch.tensor(0),
-            'augmented_image': transformed["image"], 
+            'augmented_image': torch.squeeze(augmented_image, dim=0),
             'has_anomaly': torch.tensor(np.array([has_anomaly])), 
             'idx': torch.tensor(np.array([index])),
             "loc": tree_used_fname,
@@ -158,35 +182,35 @@ class AnomalyDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
-def get_train_transforms(cfg, resize=False):
+def get_train_transforms(cfg, resize_shape):
 
     custom_transforms = []
-    if resize:
-        custom_transforms.append(A.LongestMaxSize(max_size=cfg.TREES_DATASET.MAX_SIZE))
-    custom_transforms.append(A.HorizontalFlip(p=cfg.TREES_DATASET.HFLIP))
-    custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
+    # if resize:
+    custom_transforms.append(A.Resize(resize_shape[0], resize_shape[1]))
+    # custom_transforms.append(A.HorizontalFlip(p=cfg.TREES_DATASET.HFLIP))
+    # custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
     return A.Compose(custom_transforms, additional_targets={'image0': 'image'})
 
-def get_val_transforms(cfg, resize=False):
+def get_val_transforms(cfg, resize_shape):
 
     custom_transforms = []
     
-    if resize:
-        custom_transforms.append(A.LongestMaxSize(max_size=cfg.TREES_DATASET.MAX_SIZE))
-    custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
+    # if resize:
+    custom_transforms.append(A.Resize(resize_shape[0], resize_shape[1]))
+    # custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
     return A.Compose(custom_transforms, additional_targets={'image0': 'image'})
 
-def get_test_transforms(cfg, resize=False):
+def get_test_transforms(cfg, resize_shape):
 
     custom_transforms = []
     
-    if resize:
-        custom_transforms.append(A.LongestMaxSize(max_size=cfg.TREES_DATASET.MAX_SIZE))
-    custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
+    # if resize:
+    custom_transforms.append(A.Resize(resize_shape[0], resize_shape[1]))
+    # custom_transforms.append(A.Normalize(mean=cfg.TREES_DATASET.NORMALIZE.MEAN, std=cfg.TREES_DATASET.NORMALIZE.STD))
     custom_transforms.append(ToTensorV2())
 
     return A.Compose(custom_transforms, additional_targets={'image0': 'image'})
@@ -198,8 +222,9 @@ def test_dataset(cfg, dataset, item, split="train"):
     sample = dataset.__getitem__(item)
     image = sample["image"]
     augmented_image = sample["augmented_image"]
+    # print(augmented_image.shape)
     # print(sample["loc"], sample["basename"])
-    preview_loc = os.path.join("datasets/preview_trees/", sample["loc"])
+    preview_loc = os.path.join("datasets/preview_trees/", "/".join(sample["loc"].split("/")[1:-2]))
     p = Path(preview_loc)
     p.mkdir(parents=True, exist_ok=True)
     save_image(image, os.path.join(preview_loc, sample["basename"]+".png"))
@@ -207,7 +232,7 @@ def test_dataset(cfg, dataset, item, split="train"):
 
     # Visualize Semantic
     for sem in ["anomaly_mask"]:
-        print(sample[sem].shape)
+        # print(sample[sem].shape)
         im = torch.squeeze(sample[sem])
         plt.imshow(im)
         plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask.png"))

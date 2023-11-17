@@ -286,7 +286,7 @@ def get_test_transforms(cfg):
 
 def test_dataset(cfg, dataset, item):
 
-    # print(item)
+    print(item)
     sample = dataset.__getitem__(item)
     image = sample["image"]
     augmented_image = sample["augmented_image"]
@@ -299,6 +299,7 @@ def test_dataset(cfg, dataset, item):
 
     # Visualize Semantic
     for sem in ["anomaly_mask"]:
+        # print(sample[sem].shape)
         im = torch.squeeze(sample[sem])
         plt.imshow(im)
         plt.savefig(os.path.join(preview_loc, sample["basename"]+"_anomaly_mask.png"))
