@@ -272,7 +272,7 @@ class DecoderReconstructive(nn.Module):
                                  nn.BatchNorm2d(base_width * 8),
                                  nn.ReLU(inplace=True))
         self.db1 = nn.Sequential(
-            nn.Conv2d(base_width*8, base_width*8, kernel_size=3, padding=1),
+            nn.Conv2d(base_width*16, base_width*8, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*8),
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width * 8, base_width * 4, kernel_size=3, padding=1),
@@ -286,7 +286,7 @@ class DecoderReconstructive(nn.Module):
                                  nn.BatchNorm2d(base_width * 4),
                                  nn.ReLU(inplace=True))
         self.db2 = nn.Sequential(
-            nn.Conv2d(base_width*4, base_width*4, kernel_size=3, padding=1),
+            nn.Conv2d(base_width*8, base_width*4, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*4),
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width * 4, base_width * 2, kernel_size=3, padding=1),
@@ -301,7 +301,7 @@ class DecoderReconstructive(nn.Module):
                                  nn.ReLU(inplace=True))
         # cat with base*1
         self.db3 = nn.Sequential(
-            nn.Conv2d(base_width*2, base_width*2, kernel_size=3, padding=1),
+            nn.Conv2d(base_width*4, base_width*2, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width*2),
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width*2, base_width*1, kernel_size=3, padding=1),
@@ -315,7 +315,7 @@ class DecoderReconstructive(nn.Module):
                                  nn.BatchNorm2d(base_width),
                                  nn.ReLU(inplace=True))
         self.db4 = nn.Sequential(
-            nn.Conv2d(base_width*1, base_width, kernel_size=3, padding=1),
+            nn.Conv2d(base_width*2, base_width, kernel_size=3, padding=1),
             nn.BatchNorm2d(base_width),
             nn.ReLU(inplace=True),
             nn.Conv2d(base_width, base_width, kernel_size=3, padding=1),
@@ -329,18 +329,35 @@ class DecoderReconstructive(nn.Module):
 
     def forward(self, b5, b4, b3, b2, b1):
         
+        # up1 = self.up1(b5)
+        # db1 = self.db1(up1)  
+
+        # up2 = self.up2(db1)
+        # db2 = self.db2(up2) 
+
+        # up3 = self.up3(db2)
+        # db3 = self.db3(up3)  
+
+        # up4 = self.up4(db3)
+        # db4 = self.db4(up4)  
+
+        # out = self.fin_out(db4)
+
+
         up1 = self.up1(b5)
-        db1 = self.db1(up1)  
+        db1 = self.db1(torch.cat([up1, b4], dim=1))  # Add skip connection
 
         up2 = self.up2(db1)
-        db2 = self.db2(up2) 
+        db2 = self.db2(torch.cat([up2, b3], dim=1))  # Add skip connection
 
         up3 = self.up3(db2)
-        db3 = self.db3(up3)  
+        db3 = self.db3(torch.cat([up3, b2], dim=1))  # Add skip connection
 
         up4 = self.up4(db3)
-        db4 = self.db4(up4)  
+        db4 = self.db4(torch.cat([up4, b1], dim=1))  # Add skip connection
 
         out = self.fin_out(db4)
+
+
 
         return out
