@@ -110,7 +110,7 @@ class MVTecDRAEMTestDataset(Dataset):
             source_img_bp = bp(torch.unsqueeze(transformed["image"], dim=0))
             # lab_image = rgb_to_lab(source_img_bp)
             imgs_obj[size] = {
-                'image': torch.squeeze(source_img_bp, dim=0),
+                'source_img': torch.squeeze(source_img_bp, dim=0),
                 'anomaly_mask': torch.permute(transformed["masks"][0], (2,0,1)),
             }
 
