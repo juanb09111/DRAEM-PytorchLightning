@@ -94,6 +94,8 @@ class DRAEM(pl.LightningModule):
         while batch_idx <= 16:
             gray_batch = batch["image"]
             gray_rec = self.reconstructive(gray_batch)
+            # gray_batch = torch.where(gray_batch > 0.1, gray_batch, torch.zeros_like(gray_batch))
+            # gray_rec = torch.where(gray_rec > 0.1, gray_rec, torch.zeros_like(gray_rec))
             joined_in = torch.cat((gray_rec.detach(), gray_batch), dim=1)
             
 
@@ -110,6 +112,8 @@ class DRAEM(pl.LightningModule):
                 mask = out_mask_sm[idx]
                 gt_mask = t_mask[idx]
                 g_rec = gray_rec[idx]
+                
+                print(g_rec.shape, torch.unique(g_rec))
                 t_ch = torch.unsqueeze(torch.zeros_like(mask[0]), 0)
 
                 heatmap = torch.cat((torch.unsqueeze(mask[1], 0), t_ch, torch.unsqueeze(mask[0], 0)))
