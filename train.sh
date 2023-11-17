@@ -5,11 +5,11 @@
 #SBATCH -J JP_JOB
 #
 # Let's redirect job's out some other file than default slurm-%jobid-out
-#SBATCH --output=res/res_predict_2_july_test%a.txt
-#SBATCH --error=res/err_predict_2_july_test%a.txt
+#SBATCH --output=res_nov/res_no_skip_blurr_predict_%a.txt
+#SBATCH --error=res_nov/err_no_skip_blurr_predict_%a.txt
 #
 #!/bin/bash
-#SBATCH --job-name=deeplab
+#SBATCH --job-name=draem
 #SBATCH --partition=gpu
 #SBATCH --time=6-23:59:00
 #SBATCH --cpus-per-task=4
@@ -54,4 +54,4 @@ EXP_NAME=$1
 
 # Finally run your job. Here's an example of a python script.
 
-python -u train.py   --ip_adress $ip1 --exp_name $1
+python -u train.py  --obj_id 0 --config configs/draem.yml --predict --exp_name $1
