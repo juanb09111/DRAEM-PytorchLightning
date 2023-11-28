@@ -45,8 +45,12 @@ def train(args):
     torch.cuda.empty_cache()
     for obj_name in args.obj_names:
 
-        datamodule = treeDataModule(cfg, obj_name, test=True)
-        # datamodule = AnomalyDataModule(cfg, obj_name, test=False)
+        # if args.predict:
+        #     datamodule = AnomalyDataModule(cfg, obj_name, test=True)
+        # else:
+        #     datamodule = treeDataModule(cfg, obj_name, test=False)
+        datamodule = AnomalyDataModule(cfg, obj_name, test=False)
+        # datamodule = treeDataModule(cfg, obj_name, test=False)
 
         checkpoint_path = cfg.CHECKPOINT_PATH_INFERENCE if (args.predict or args.eval) else cfg.CHECKPOINT_PATH_TRAINING
         checkpoint_path = checkpoint_path if checkpoint_path != None else ""

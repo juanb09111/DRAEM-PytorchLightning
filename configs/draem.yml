@@ -1,6 +1,6 @@
 # VERSION: 2
 
-BATCH_SIZE: 1
+BATCH_SIZE: 4
 SOLVER:
   NAME: "Adam" # Adam or SGD
   WARMUP_ITERS: 100 # Set to 0 for no warmup
@@ -10,15 +10,20 @@ SOLVER:
   N_EPOCHS: 700
   INIT_WEIGHTS: True
   
-
 CHECKPOINT_PATH_TRAINING: ""
+# CHECKPOINT_PATH_TRAINING: "tb_logs_predict/tree_train_350/version_0/checkpoints/last.ckpt"
 # CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr_lab/version_0/checkpoints/epoch=699-step=485100.ckpt"
 
 # CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_extended_no_skip_nn/version_0/checkpoints/epoch=699-step=485100.ckpt" # err_no_skip_2.txt 
 
 # CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/epoch=699-step=485100.ckpt" 
 
-CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/last.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/last.ckpt"
+
+
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_train_350/version_0/checkpoints/last.ckpt"
+
+CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_tree1700/version_0/checkpoints/last.ckpt"
 
 
 ANOMALY_DATASET:

@@ -115,7 +115,7 @@ class DRAEM(pl.LightningModule):
                 gt_mask = t_mask[idx]
                 g_rec = gray_rec[idx]
                 
-                print(g_rec.shape, torch.unique(g_rec))
+                # print(g_rec.shape, torch.unique(g_rec))
                 t_ch = torch.unsqueeze(torch.zeros_like(mask[0]), 0)
 
                 heatmap = torch.cat((torch.unsqueeze(mask[1], 0), t_ch, torch.unsqueeze(mask[0], 0)))
