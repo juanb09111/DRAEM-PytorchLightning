@@ -17,14 +17,64 @@ CHECKPOINT_PATH_TRAINING: ""
 
 # CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_extended_no_skip_nn/version_0/checkpoints/epoch=699-step=485100.ckpt" # err_no_skip_2.txt 
 
-CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/epoch=699-step=485100.ckpt" 
+# CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/last.ckpt"  # working!!!!
 
+#----------------------t900-----------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_t900/version_0/checkpoints/last.ckpt" #best performing from branch masked lower res, 900 training samples
+#------------------------------------------
+
+
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/Jani2023_jani_all/version_0/checkpoints/last.ckpt" # all samples
+
+
+#----------------------t3600---------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/Jani2023_jani_3600/version_0/checkpoints/last.ckpt"
+#----------------------t3600------------------
+
+
+
+#----------------------t7200---------------------
+CHECKPOINT_PATH_INFERENCE: "tb_logs_train/Jani2023_jani_7200/version_0/checkpoints/last.ckpt"
+#------------------------------------------
+
+
+#----------------------t7200 negative 0.3---------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_negative_07/version_0/checkpoints/last.ckpt"
+#------------------------------------------
+
+
+#----------------------t7200 negative 0.7---------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_JDTuni_7200_negative_0.7/version_0/checkpoints/last.ckpt"
+#------------------------------------------
+
+
+
+#---------------------------t7200 negative 0.6------------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_neg_06_7200/version_0/checkpoints/last.ckpt"
+#------------------------------------------------------------
+
+
+
+#-----------------------------t7200 negative 0.65-----------------------------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_neg_065_7200/version_0/checkpoints/last.ckpt"
+#------------------------------------------------------------
+
+
+#-----------------------------------JDTuni100_cont_neg_100_7200-------------------------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_cont_neg_100_7200/version_0/checkpoints/last.ckpt"
+#------------------------------------------------------------------------
+
+
+
+#-----------------------------------all_neg_06_1200_epochs-------------------------------------
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_train/JDTuni100_all_neg_06_1200_epochs/version_0/checkpoints/last.ckpt"
+#------------------------------------------------------------------------
 
 ANOMALY_DATASET:
   PREVIEW_DATASET: True
   MAX_SAMPLES: null #Number of training samples, null for all
   SHUFFLE: True
-  MAX_SIZE: 1500
+  MAX_SIZE: 256
   ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
   DATASET_PATH:
     ROOT: "datasets"

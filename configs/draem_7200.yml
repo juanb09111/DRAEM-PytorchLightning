@@ -1,0 +1,36 @@
+# VERSION: 2
+
+BATCH_SIZE: 4
+SOLVER:
+  NAME: "Adam" # Adam or SGD
+  WARMUP_ITERS: 100 # Set to 0 for no warmup
+  # ACCUMULATE_GRAD: 2 # Number of accumulated epochs for accumulated gradient
+  FAST_DEV_RUN: 2
+  BASE_LR: 0.0001
+  N_EPOCHS: 700
+  INIT_WEIGHTS: True
+  
+
+CHECKPOINT_PATH_TRAINING: ""
+# CHECKPOINT_PATH_TRAINING: "tb_logs_train/Jani2023_jani_7200/version_0/checkpoints/last.ckpt"
+# CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr_lab/version_0/checkpoints/epoch=699-step=485100.ckpt"
+
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_extended_no_skip_nn/version_0/checkpoints/epoch=699-step=485100.ckpt" # err_no_skip_2.txt 
+
+# CHECKPOINT_PATH_INFERENCE: "tb_logs/tree_extended_blurr/version_1/checkpoints/last.ckpt"  # working!!!!
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/tree_t900/version_0/checkpoints/last.ckpt" #best performing from branch masked lower res, 900 training samples
+# CHECKPOINT_PATH_INFERENCE: "tb_logs_predict/Jani2023_jani_all/version_0/checkpoints/last.ckpt" # all samples
+CHECKPOINT_PATH_INFERENCE: ""
+
+
+ANOMALY_DATASET:
+  PREVIEW_DATASET: True
+  MAX_SAMPLES: 7200 #Number of training samples, null for all
+  SHUFFLE: True
+  MAX_SIZE: 256
+  ANOMALY_FOLDER: "anomalies_cropped" # leave empty "" to use all anomaly types
+  DATASET_PATH:
+    ROOT: "datasets"
+    ANOMALY_SOURCE: "dtd/images"
+    MVTEC: "mvtec"
+    

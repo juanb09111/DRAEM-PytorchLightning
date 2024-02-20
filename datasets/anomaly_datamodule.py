@@ -15,13 +15,14 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import matplotlib.pyplot as plt
 from kornia.filters.blur_pool import BlurPool2D
+import random
 # from kornia.color import rgb_to_lab
 
 class MVTecDRAEMTestDataset(Dataset):
 
     def __init__(self, cfg, root_dir, transforms):
         self.root_dir = root_dir
-        self.images = sorted(glob.glob(root_dir+"/scratch/*.jpg"))
+        self.images = sorted(glob.glob(root_dir+"/**/*"))
         self.transforms = transforms
         self.cfg = cfg
 
@@ -146,6 +147,10 @@ class MVTecDRAEMTrainDataset(Dataset):
         self.transforms = transforms
         self.cfg = cfg
 
+        if cfg.ANOMALY_DATASET.MAX_SAMPLES != None:
+            random.shuffle(self.image_paths)
+            self.image_paths = self.image_paths[:cfg.ANOMALY_DATASET.MAX_SAMPLES]
+
     def __len__(self):
         return len(self.image_paths)
 
@@ -178,11 +183,28 @@ class MVTecDRAEMTrainDataset(Dataset):
 
         beta = torch.rand(1).numpy()[0] * 0.8
 
+
+        # Find the 2D locations where the RGB color is black
+        black_pixels = np.all(image == [0, 0, 0], axis=2)
+
+        # Get the coordinates of the black pixels
+        black_pixel_coordinates = np.column_stack(np.where(black_pixels))
+
+        # Create a binary mask based on the coordinates
+        
+        binary_mask = np.ones_like(black_pixels, dtype=np.uint8)
+        binary_mask[black_pixel_coordinates[:, 0], black_pixel_coordinates[:, 1]] = 0
+        
+        # preview_loc = os.path.join("datasets/preview/bin/", anomaly_source_path.split("/")[-1])
+        # plt.imshow(binary_mask)
+        # plt.savefig(preview_loc)
+
         augmented_image = image * (1 - perlin_thr) + (1 - beta) * img_thr + beta * image * (
             perlin_thr)
 
         no_anomaly = torch.rand(1).numpy()[0]
-        if no_anomaly > 0.5:
+        positive_prob = 0.4
+        if no_anomaly > positive_prob:
             image = image.astype(np.float32)
             return image, np.zeros_like(perlin_thr, dtype=np.float32), np.array([0.0],dtype=np.float32)
         else:
@@ -192,6 +214,21 @@ class MVTecDRAEMTrainDataset(Dataset):
             has_anomaly = 1.0
             if np.sum(msk) == 0:
                 has_anomaly=0.0
+            
+            augmented_image = augmented_image * binary_mask[:,:,np.newaxis]
+            # preview_loc = os.path.join("datasets/preview/bin/", "msk_"+anomaly_source_path.split("/")[-1])
+            # plt.imshow(msk)
+            # plt.savefig(preview_loc)
+            # plt.close()
+
+            msk = msk * binary_mask[:,:,np.newaxis]
+            # preview_loc = os.path.join("datasets/preview/bin/", "msk_bin_"+anomaly_source_path.split("/")[-1])
+            # plt.imshow(msk)
+            # plt.savefig(preview_loc)
+            # plt.close()
+
+            # preview_loc = os.path.join("datasets/preview/bin/", "aug_"+anomaly_source_path.split("/")[-1])
+            # cv2.imwrite(preview_loc, augmented_image*255) 
             return augmented_image, msk, np.array([has_anomaly],dtype=np.float32)
 
     def transform_image(self, image_path, anomaly_source_path, resize_shape):

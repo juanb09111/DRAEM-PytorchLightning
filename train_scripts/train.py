@@ -78,7 +78,8 @@ def train(args):
         lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
         exp_name = "{}_{}_predict".format(obj_name, args.exp_name) if args.predict else "{}_{}".format(obj_name, args.exp_name)
-        tb_logger = pl_loggers.TensorBoardLogger("tb_logs_predict", name=exp_name)
+        tb_log_sufix = "predict" if args.predict else "train"
+        tb_logger = pl_loggers.TensorBoardLogger("tb_logs_{}".format(tb_log_sufix), name=exp_name)
         # # Create a pytorch lighting trainer
         trainer = pl.Trainer(
             # weights_summary='full',
